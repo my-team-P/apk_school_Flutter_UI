@@ -9,6 +9,13 @@ import 'package:admin/sid/store.blade.dart';
 import 'package:admin/sid/student.blade.dart';
 import 'package:admin/sid/translation.blade.dart';
 import 'package:admin/sid/chat.blade.dart';
+import 'package:admin/add_teacher.dart';
+import 'package:admin/show/show.dart';
+import 'package:admin/show/lib.dart';
+import 'package:admin/sid/exam.dart';
+import 'package:admin/RegisterPage.dart';
+import 'package:admin/degree.dart';
+import 'package:admin/show/deg.dart';
 
 class SideMenu extends StatelessWidget {
   const SideMenu({
@@ -168,6 +175,56 @@ class SideMenu extends StatelessWidget {
                     },
                   ),
                   _buildMenuTile(
+                    title: "اضافة درجات ",
+                    svgSrc: "assets/icons/menu_tran.svg",
+                    icon: Icons.add,
+                    color: Color.fromARGB(255, 176, 167, 167),
+                    press: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (context) => AddGradePage()),
+                      );
+                    },
+                  ),
+                  _buildMenuTile(
+                    title: "اضافة معلم جديد",
+                    svgSrc: "assets/icons/menu_tran.svg",
+                    icon: Icons.add,
+                    color: Color.fromARGB(255, 176, 167, 167),
+                    press: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => AddTeacherPage()),
+                      );
+                    },
+                  ),
+                  _buildMenuTile(
+                    title: "اضافة طالب جديد",
+                    svgSrc: "assets/icons/menu_tran.svg",
+                    icon: Icons.add,
+                    color: Color.fromARGB(255, 176, 167, 167),
+                    press: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (context) => RegisterPage()),
+                      );
+                    },
+                  ),
+                  _buildMenuTile(
+                    title: "معاينة الدرجات",
+                    svgSrc: "assets/icons/menu_tran.svg",
+                    icon: Icons.show_chart,
+                    color: Color.fromARGB(255, 18, 17, 17),
+                    press: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => ViewGradesPage()),
+                      );
+                    },
+                  ),
+                  _buildMenuTile(
                     title: "تسجيل الدخول",
                     svgSrc: "assets/icons/menu_tran.svg",
                     icon: Icons.login,
@@ -202,7 +259,7 @@ class SideMenu extends StatelessWidget {
                       Navigator.pushReplacement(
                         context,
                         MaterialPageRoute(
-                            builder: (context) => const LibraryPage()),
+                            builder: (context) => const SimpleLibraryPage()),
                       );
                     },
                   ),
@@ -255,6 +312,44 @@ class SideMenu extends StatelessWidget {
                         context,
                         MaterialPageRoute(
                             builder: (context) => const SettingsPage()),
+                      );
+                    },
+                  ),
+                  _buildMenuTile(
+                    title: "رفع اختبار",
+                    svgSrc: "assets/icons/menu_setting.svg",
+                    icon: Icons.add_comment,
+                    color: Color(0xFFf6d365),
+                    press: () {
+                      Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const SimpleExamsPage(),
+                          ));
+                    },
+                  ),
+                  _buildMenuTile(
+                    title: "عرض الطلاب + المعلمين",
+                    svgSrc: "assets/icons/menu_setting.svg",
+                    icon: Icons.settings,
+                    color: Color(0xFFf6d365),
+                    press: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (context) => PeoplePage()),
+                      );
+                    },
+                  ),
+                  _buildMenuTile(
+                    title: "عرض الكتب",
+                    svgSrc: "assets/icons/menu_setting.svg",
+                    icon: Icons.settings,
+                    color: Color(0xFFf6d365),
+                    press: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const LibraryPage()),
                       );
                     },
                   ),

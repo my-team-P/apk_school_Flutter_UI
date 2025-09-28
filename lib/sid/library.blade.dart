@@ -1,839 +1,602 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:file_picker/file_picker.dart';
+import 'dart:convert';
+import 'dart:io';
 import 'package:admin/screens/main/main_screen.dart';
 
-class LibraryPage extends StatefulWidget {
-  const LibraryPage({super.key});
+class SimpleLibraryPage extends StatefulWidget {
+  const SimpleLibraryPage({super.key});
 
   @override
-  State<LibraryPage> createState() => _LibraryPageState();
+  State<SimpleLibraryPage> createState() => _SimpleLibraryPageState();
 }
 
-class _LibraryPageState extends State<LibraryPage> {
-  // المواد والصفوف
-  final List<String> subjects = [
-    "الرياضيات",
-    "العلوم",
-    "اللغة العربية",
-    "اللغة الإنجليزية",
-    "الدراسات الاجتماعية",
-    "التربية الإسلامية",
-    "الحاسب الآلي",
-    "التربية الفنية"
-  ];
-
-  final List<String> grades = [
-    "الصف الأول",
-    "الصف الثاني",
-    "الصف الثالث",
-    "الصف الرابع",
-    "الصف الخامس",
-    "الصف السادس"
-  ];
-
-  // الفلاتر والبحث
-  String? selectedSubject;
-  String? selectedGrade;
-  String searchQuery = '';
-  final TextEditingController _searchController = TextEditingController();
+class _SimpleLibraryPageState extends State<SimpleLibraryPage> {
+  // controllers للنموذج
+  final TextEditingController _bookTitleController = TextEditingController();
+  final TextEditingController _authorController = TextEditingController();
+  final TextEditingController _publisherController = TextEditingController();
   final TextEditingController _fileNameController = TextEditingController();
+  final TextEditingController _filePathController = TextEditingController();
 
-  // تخزين الملفات مع بيانات إضافية
-  final List<Map<String, dynamic>> allFiles = [
-    {
-      "name": "كتاب الرياضيات.pdf",
-      "size": 2456789,
-      "type": "pdf",
-      "subject": "الرياضيات",
-      "grade": "الصف الأول",
-      "uploadDate": "2024-03-15",
-      "pages": 120,
-      "author": "وزارة التعليم"
-    },
-    {
-      "name": "تمارين العلوم.docx",
-      "size": 1567890,
-      "type": "doc",
-      "subject": "العلوم",
-      "grade": "الصف الثاني",
-      "uploadDate": "2024-03-14",
-      "pages": 45,
-      "author": "المعلم أحمد"
-    },
-    {
-      "name": "قواعد اللغة العربية.pptx",
-      "size": 3456789,
-      "type": "ppt",
-      "subject": "اللغة العربية",
-      "grade": "الصف الثالث",
-      "uploadDate": "2024-03-13",
-      "pages": 80,
-      "author": "المدرسة الذكية"
-    },
-    {
-      "name": "English Vocabulary.pdf",
-      "size": 1890123,
-      "type": "pdf",
-      "subject": "اللغة الإنجليزية",
-      "grade": "الصف الأول",
-      "uploadDate": "2024-03-12",
-      "pages": 60,
-      "author": "Mr. Smith"
-    },
-    {
-      "name": "أنشطة الرياضيات.pdf",
-      "size": 987654,
-      "type": "pdf",
-      "subject": "الرياضيات",
-      "grade": "الصف الثاني",
-      "uploadDate": "2024-03-11",
-      "pages": 35,
-      "author": "المعلم محمد"
-    },
+  // المتغيرات
+  String? _selectedCategory;
+  int? _selectedGradeId;
+  int? _selectedSubjectId;
+  File? _selectedFile;
+
+  // حالة التحميل
+  bool _isLoading = false;
+  bool _isLoadingData = false;
+
+  // البيانات
+  List<dynamic> _grades = [];
+  List<dynamic> _subjects = [];
+
+  // رابط الـ API
+  final String _baseUrl = 'http://192.168.1.102:8000/api/library';
+
+  // التصنيفات الثابتة
+  final List<String> _categories = [
+    'كتب دراسية',
+    'مراجع علمية',
+    'قصص تعليمية',
+    'أبحاث',
+    'تمارين',
+    'نماذج اختبارات',
+    'كتب منهجية',
+    'مراجع إضافية',
+    'وسائل تعليمية',
+    'موسوعات'
   ];
 
-  // رفع ملف جديد مع إدخال الاسم
-  Future<void> _uploadFile() async {
-    if (selectedSubject == null || selectedGrade == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("الرجاء اختيار المادة والصف أولاً"),
-          backgroundColor: Colors.orange,
-          behavior: SnackBarBehavior.floating,
-        ),
+  @override
+  void initState() {
+    super.initState();
+    _loadGradesAndSubjects();
+  }
+
+  // دالة لجلب الصفوف والمواد مع print لتشخيص البيانات
+  Future<void> _loadGradesAndSubjects() async {
+    setState(() {
+      _isLoadingData = true;
+    });
+
+    try {
+      final [gradesResponse, subjectsResponse] = await Future.wait([
+        http.get(Uri.parse('$_baseUrl/classes')),
+        http.get(Uri.parse('$_baseUrl/subjects')),
+      ]);
+
+      if (gradesResponse.statusCode == 200) {
+        final data = json.decode(gradesResponse.body);
+        print('Grades API data: $data'); // << Print added
+        setState(() {
+          _grades = data['classes'] ?? data['data'] ?? data ?? [];
+        });
+      }
+
+      if (subjectsResponse.statusCode == 200) {
+        final data = json.decode(subjectsResponse.body);
+        print('Subjects API data: $data'); // << Print added
+        setState(() {
+          _subjects = data['subjects'] ?? data['data'] ?? data ?? [];
+        });
+      }
+    } catch (e) {
+      print('Error loading data: $e');
+    } finally {
+      setState(() {
+        _isLoadingData = false;
+      });
+    }
+  }
+
+  // دالة لاختيار الملف
+  Future<void> _pickFile() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: [
+          'pdf',
+          'doc',
+          'docx',
+          'ppt',
+          'pptx',
+          'jpg',
+          'jpeg',
+          'png'
+        ],
+        allowMultiple: false,
       );
+
+      if (result != null && result.files.isNotEmpty) {
+        PlatformFile file = result.files.first;
+        setState(() {
+          _selectedFile = File(file.path!);
+          _fileNameController.text = file.name;
+          _filePathController.text = file.path!;
+        });
+        _showMessage('تم اختيار الملف: ${file.name}', Colors.green);
+      }
+    } catch (e) {
+      _showMessage('خطأ في اختيار الملف: $e', Colors.red);
+    }
+  }
+
+  // دالة لإضافة كتاب
+  Future<void> _addBook() async {
+    if (_bookTitleController.text.isEmpty || _authorController.text.isEmpty) {
+      _showMessage('الرجاء إدخال عنوان الكتاب والمؤلف', Colors.red);
       return;
     }
 
-    final FilePickerResult? result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: [
-        'pdf',
-        'doc',
-        'docx',
-        'ppt',
-        'pptx',
-        'jpg',
-        'jpeg',
-        'png'
-      ],
-      allowMultiple: false, // رفع ملف واحد لإدخال اسم لكل ملف
-    );
+    if (_selectedGradeId == null || _selectedSubjectId == null) {
+      _showMessage('الرجاء اختيار الصف والمادة', Colors.red);
+      return;
+    }
 
-    if (result != null && result.files.isNotEmpty) {
-      final file = result.files.first;
+    setState(() {
+      _isLoading = true;
+    });
 
-      if (file.extension?.toLowerCase() == "gif") {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("ملفات GIF غير مسموحة ❌"),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
+    try {
+      var request = http.MultipartRequest('POST', Uri.parse(_baseUrl));
+
+      request.fields['book_title'] = _bookTitleController.text;
+      request.fields['author'] = _authorController.text;
+      request.fields['grade_id'] = _selectedGradeId.toString();
+      request.fields['subject_id'] = _selectedSubjectId.toString();
+
+      if (_publisherController.text.isNotEmpty) {
+        request.fields['publisher'] = _publisherController.text;
       }
 
-      // عرض dialog لإدخال اسم الملف
-      await _showFileNameDialog(file);
+      if (_selectedCategory != null) {
+        request.fields['category'] = _selectedCategory!;
+      }
+
+      if (_fileNameController.text.isNotEmpty) {
+        request.fields['file_name'] = _fileNameController.text;
+      }
+
+      if (_selectedFile != null && await _selectedFile!.exists()) {
+        request.files.add(await http.MultipartFile.fromPath(
+          'file',
+          _selectedFile!.path,
+          filename: _fileNameController.text.isEmpty
+              ? 'book_${DateTime.now().millisecondsSinceEpoch}.${_selectedFile!.path.split('.').last}'
+              : _fileNameController.text,
+        ));
+      }
+
+      var response = await request.send();
+      var responseString = await response.stream.bytesToString();
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        _showMessage('تم إضافة الكتاب بنجاح ✅', Colors.green);
+        _clearForm();
+      } else {
+        _showMessage('فشل في إضافة الكتاب: ${response.statusCode}', Colors.red);
+        print('Response body: $responseString');
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      _showMessage('خطأ في الاتصال: $e', Colors.red);
     }
   }
 
-  // dialog لإدخال اسم الملف
-  Future<void> _showFileNameDialog(PlatformFile file) async {
-    _fileNameController.text = file.name; // تعيين الاسم الافتراضي
-    return showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text("إدخال اسم الملف"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text("الرجاء إدخال اسم للملف:"),
-            SizedBox(height: 10),
-            TextFormField(
-              controller: _fileNameController,
-              decoration: InputDecoration(
-                labelText: "اسم الملف",
-                border: OutlineInputBorder(),
-                hintText: "أدخل اسمًا وصفياً للملف",
-              ),
-              maxLength: 100,
-            ),
-            SizedBox(height: 10),
-            Text(
-              "الملف: ${file.name}",
-              style: TextStyle(color: Colors.grey, fontSize: 12),
-            ),
-            Text(
-              "الحجم: ${_formatFileSize(file.size ?? 0)}",
-              style: TextStyle(color: Colors.grey, fontSize: 12),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text("إلغاء"),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (_fileNameController.text.trim().isNotEmpty) {
-                _addFileToLibrary(file, _fileNameController.text.trim());
-                Navigator.pop(context);
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text("الرجاء إدخال اسم للملف")),
-                );
-              }
-            },
-            child: Text("حفظ"),
-          ),
-        ],
-      ),
-    );
+  void _clearForm() {
+    _bookTitleController.clear();
+    _authorController.clear();
+    _publisherController.clear();
+    _fileNameController.clear();
+    _filePathController.clear();
+    setState(() {
+      _selectedCategory = null;
+      _selectedGradeId = null;
+      _selectedSubjectId = null;
+      _selectedFile = null;
+    });
   }
 
-  // إضافة الملف إلى المكتبة
-  void _addFileToLibrary(PlatformFile file, String fileName) {
-    setState(() {
-      allFiles.insert(0, {
-        "name": fileName,
-        "size": file.size ?? 0,
-        "type": file.extension ?? 'file',
-        "subject": selectedSubject,
-        "grade": selectedGrade,
-        "uploadDate":
-            "${DateTime.now().year}-${DateTime.now().month.toString().padLeft(2, '0')}-${DateTime.now().day.toString().padLeft(2, '0')}",
-        "pages": 0,
-        "author": "المستخدم",
-        "originalName": file.name, // حفظ الاسم الأصلي
-      });
-    });
-
-    _fileNameController.clear();
-
+  void _showMessage(String message, Color color) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text("تم رفع الملف '$fileName' بنجاح ✅"),
-        backgroundColor: Colors.green,
+        content: Text(message),
+        backgroundColor: color,
         behavior: SnackBarBehavior.floating,
       ),
     );
   }
 
-  // حذف ملف
-  void _deleteFile(int index) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text("حذف الملف"),
-        content: Text("هل أنت متأكد من أنك تريد حذف هذا الملف؟"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text("إلغاء"),
-          ),
-          TextButton(
-            onPressed: () {
-              final fileName = allFiles[index]["name"];
-              setState(() {
-                allFiles.removeAt(index);
-              });
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text("تم حذف الملف '$fileName' بنجاح"),
-                  backgroundColor: Colors.green,
-                ),
-              );
-            },
-            child: Text("حذف", style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // عرض معلومات الملف
-  void _showFileDetails(Map<String, dynamic> file) {
-    showModalBottomSheet(
-      context: context,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => Container(
-        padding: EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            SizedBox(height: 20),
-            Row(
-              children: [
-                _buildFileIcon(file["type"]),
-                SizedBox(width: 15),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        file["name"],
-                        style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      if (file["originalName"] != null)
-                        Text(
-                          "الاسم الأصلي: ${file["originalName"]}",
-                          style: TextStyle(fontSize: 12, color: Colors.grey),
-                        ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 20),
-            _buildDetailRow("المادة", file["subject"]),
-            _buildDetailRow("الصف", file["grade"]),
-            _buildDetailRow("المؤلف", file["author"]),
-            _buildDetailRow("تاريخ الرفع", file["uploadDate"]),
-            _buildDetailRow("عدد الصفحات", "${file["pages"]} صفحة"),
-            _buildDetailRow("الحجم", _formatFileSize(file["size"])),
-            _buildDetailRow(
-                "النوع", file["type"]?.toUpperCase() ?? "غير معروف"),
-            SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () {},
-                    icon: Icon(Icons.download),
-                    label: Text("تحميل"),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFF667eea),
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: 15),
-                    ),
-                  ),
-                ),
-                SizedBox(width: 10),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () => _deleteFile(allFiles.indexOf(file)),
-                    icon: Icon(Icons.delete),
-                    label: Text("حذف"),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: 15),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // البحث في الملفات
-  void _performSearch(String query) {
-    setState(() {
-      searchQuery = query.toLowerCase();
-    });
-  }
-
-  // فلترة الملفات مع البحث
-  List<Map<String, dynamic>> get filteredFiles {
-    return allFiles.where((file) {
-      final matchesSearch = searchQuery.isEmpty ||
-          file["name"].toLowerCase().contains(searchQuery) ||
-          file["subject"].toLowerCase().contains(searchQuery) ||
-          file["grade"].toLowerCase().contains(searchQuery);
-
-      final matchesSubject =
-          selectedSubject == null || file["subject"] == selectedSubject;
-      final matchesGrade =
-          selectedGrade == null || file["grade"] == selectedGrade;
-
-      return matchesSearch && matchesSubject && matchesGrade;
-    }).toList();
-  }
-
-  Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Text(
-            "$label: ",
-            style:
-                TextStyle(fontWeight: FontWeight.bold, color: Colors.grey[600]),
-          ),
-          Expanded(child: Text(value)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFileIcon(String type) {
-    Color color;
-    IconData icon;
-
-    switch (type) {
-      case 'pdf':
-        color = Colors.red;
-        icon = Icons.picture_as_pdf;
-        break;
-      case 'doc':
-      case 'docx':
-        color = Colors.blue;
-        icon = Icons.description;
-        break;
-      case 'ppt':
-      case 'pptx':
-        color = Colors.orange;
-        icon = Icons.slideshow;
-        break;
-      case 'jpg':
-      case 'jpeg':
-      case 'png':
-        color = Colors.green;
-        icon = Icons.image;
-        break;
-      default:
-        color = Colors.grey;
-        icon = Icons.insert_drive_file;
-    }
-
-    return Container(
-      padding: EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Icon(icon, color: color, size: 30),
-    );
-  }
-
-  String _formatFileSize(int bytes) {
-    if (bytes < 1024) return "$bytes B";
-    if (bytes < 1048576) return "${(bytes / 1024).toStringAsFixed(1)} KB";
-    return "${(bytes / 1048576).toStringAsFixed(1)} MB";
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    _fileNameController.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
-    final filesToShow = filteredFiles;
-
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
         title: Text(
-          "المكتبة الرقمية",
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-            fontSize: 20,
-          ),
+          'إضافة كتاب جديد',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
-        backgroundColor: Color(0xFF667eea),
+        centerTitle: true,
+        backgroundColor: Colors.blue[700],
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const MainScreen()),
-            );
-          },
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.filter_list, color: Colors.white),
+            icon: Icon(Icons.arrow_back, color: Colors.white),
             onPressed: () {
-              // إعادة تعيين الفلاتر
-              setState(() {
-                selectedSubject = null;
-                selectedGrade = null;
-                searchQuery = '';
-                _searchController.clear();
-              });
-            },
-          ),
-        ],
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => const MainScreen()),
+              );
+            }),
       ),
-      body: Column(
-        children: [
-          // إحصائيات سريعة
-          Container(
-            padding: EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFF667eea),
-                  Color(0xFF764ba2),
-                ],
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildStatItem(
-                    Icons.library_books, "${allFiles.length}", "الملفات"),
-                _buildStatItem(Icons.school, "${subjects.length}", "المواد"),
-                _buildStatItem(Icons.people, "${grades.length}", "الصفوف"),
-                _buildStatItem(Icons.cloud_upload, "∞", "مساحة"),
-              ],
-            ),
-          ),
-
-          // شريط البحث
-          Container(
-            padding: EdgeInsets.all(16),
-            color: Colors.white,
-            child: Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.grey[50],
-                      borderRadius: BorderRadius.circular(12),
-                      // border: Border.all(color: Colors.grey[300]),
-                    ),
-                    child: TextField(
-                      controller: _searchController,
-                      onChanged: _performSearch,
-                      decoration: InputDecoration(
-                        hintText: "ابحث في الملفات...",
-                        border: InputBorder.none,
-                        prefixIcon: Icon(Icons.search, color: Colors.grey[500]),
-                        suffixIcon: searchQuery.isNotEmpty
-                            ? IconButton(
-                                icon:
-                                    Icon(Icons.clear, color: Colors.grey[500]),
-                                onPressed: () {
-                                  _searchController.clear();
-                                  _performSearch('');
-                                },
-                              )
-                            : null,
-                        contentPadding: EdgeInsets.symmetric(horizontal: 16),
+      body: _isLoadingData
+          ? Center(child: CircularProgressIndicator(color: Colors.blue[700]))
+          : Padding(
+              padding: EdgeInsets.all(20),
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    Card(
+                      elevation: 4,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Column(
+                          children: [
+                            Icon(Icons.library_add,
+                                size: 50, color: Colors.blue[700]),
+                            SizedBox(height: 10),
+                            Text(
+                              'إضافة كتاب جديد إلى المكتبة',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blue[700],
+                              ),
+                            ),
+                            SizedBox(height: 5),
+                            Text(
+                              'املأ البيانات الأساسية للكتاب',
+                              style: TextStyle(color: Colors.grey[600]),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                ),
-                SizedBox(width: 12),
-                Container(
-                  decoration: BoxDecoration(
-                    color: Color(0xFF667eea),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: IconButton(
-                    icon: Icon(Icons.upload_file, color: Colors.white),
-                    onPressed: _uploadFile,
-                    tooltip: "رفع ملف جديد",
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // فلاتر المواد والصفوف
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            color: Colors.grey[100],
-            child: Row(
-              children: [
-                Expanded(
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: selectedSubject,
-                      hint: Text("جميع المواد", style: TextStyle(fontSize: 12)),
-                      items: [
-                        DropdownMenuItem(
-                            value: null, child: Text("جميع المواد")),
-                        ...subjects.map((subject) => DropdownMenuItem(
-                              value: subject,
-                              child:
-                                  Text(subject, style: TextStyle(fontSize: 12)),
-                            )),
-                      ],
-                      onChanged: (value) =>
-                          setState(() => selectedSubject = value),
+                    SizedBox(height: 20),
+                    Card(
+                      elevation: 3,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Padding(
+                        padding: EdgeInsets.all(20),
+                        child: Column(
+                          children: [
+                            _buildTextField(
+                                controller: _bookTitleController,
+                                label: 'عنوان الكتاب *',
+                                hint: 'أدخل عنوان الكتاب',
+                                icon: Icons.title),
+                            SizedBox(height: 15),
+                            _buildTextField(
+                                controller: _authorController,
+                                label: 'المؤلف *',
+                                hint: 'أدخل اسم المؤلف',
+                                icon: Icons.person),
+                            SizedBox(height: 15),
+                            _buildTextField(
+                                controller: _publisherController,
+                                label: 'الناشر',
+                                hint: 'أدخل اسم الناشر (اختياري)',
+                                icon: Icons.business),
+                            SizedBox(height: 15),
+                            _buildDropdown(
+                              value: _selectedCategory,
+                              label: 'التصنيف',
+                              hint: 'اختر التصنيف',
+                              icon: Icons.category,
+                              items: _categories.map((cat) {
+                                return DropdownMenuItem(
+                                  value: cat,
+                                  child: Text(cat),
+                                );
+                              }).toList(),
+                              onChanged: (value) {
+                                setState(() {
+                                  _selectedCategory = value;
+                                });
+                              },
+                            ),
+                            SizedBox(height: 15),
+                            _buildDropdown(
+                              value: _selectedGradeId,
+                              label: 'الصف *',
+                              hint: 'اختر الصف',
+                              icon: Icons.school,
+                              items: _grades.map((grade) {
+                                return DropdownMenuItem(
+                                  value: grade['id'],
+                                  child:
+                                      Text(grade['grade_name'] ?? 'غير معروف'),
+                                );
+                              }).toList(),
+                              onChanged: (value) {
+                                setState(() {
+                                  _selectedGradeId = value;
+                                });
+                              },
+                            ),
+                            SizedBox(height: 15),
+                            _buildDropdown(
+                              value: _selectedSubjectId,
+                              label: 'المادة *',
+                              hint: 'اختر المادة',
+                              icon: Icons.subject,
+                              items: _subjects.map((subject) {
+                                return DropdownMenuItem(
+                                  value: subject['id'],
+                                  child: Text(
+                                      subject['subject_name'] ?? 'غير معروف'),
+                                );
+                              }).toList(),
+                              onChanged: (value) {
+                                setState(() {
+                                  _selectedSubjectId = value;
+                                });
+                              },
+                            ),
+                            SizedBox(height: 15),
+                            _buildTextField(
+                              controller: _fileNameController,
+                              label: 'اسم الملف',
+                              hint: 'اسم الملف (اختياري)',
+                              icon: Icons.attach_file,
+                            ),
+                            SizedBox(height: 15),
+                            _buildFilePicker(),
+                            SizedBox(height: 25),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed: _clearForm,
+                                    style: OutlinedButton.styleFrom(
+                                      padding:
+                                          EdgeInsets.symmetric(vertical: 15),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      'مسح الكل',
+                                      style: TextStyle(color: Colors.grey[700]),
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(width: 15),
+                                Expanded(
+                                  child: ElevatedButton(
+                                    onPressed: _isLoading ? null : _addBook,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.blue[700],
+                                      foregroundColor: Colors.white,
+                                      padding:
+                                          EdgeInsets.symmetric(vertical: 15),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                    ),
+                                    child: _isLoading
+                                        ? SizedBox(
+                                            height: 20,
+                                            width: 20,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Colors.white,
+                                            ),
+                                          )
+                                        : Text(
+                                            'إضافة الكتاب',
+                                            style: TextStyle(
+                                                fontWeight: FontWeight.bold),
+                                          ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
-                SizedBox(width: 10),
-                Expanded(
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: selectedGrade,
-                      hint: Text("جميع الصفوف", style: TextStyle(fontSize: 12)),
-                      items: [
-                        DropdownMenuItem(
-                            value: null, child: Text("جميع الصفوف")),
-                        ...grades.map((grade) => DropdownMenuItem(
-                              value: grade,
-                              child:
-                                  Text(grade, style: TextStyle(fontSize: 12)),
-                            )),
-                      ],
-                      onChanged: (value) =>
-                          setState(() => selectedGrade = value),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // عدد النتائج
-          if (filesToShow.isNotEmpty)
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              color: Colors.grey[50],
-              child: Row(
-                children: [
-                  Text(
-                    "عرض ${filesToShow.length} من ${allFiles.length} ملف",
-                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                  ),
-                  Spacer(),
-                  if (searchQuery.isNotEmpty)
-                    Chip(
-                      label: Text("بحث: $searchQuery"),
-                      backgroundColor: Color(0xFF667eea).withOpacity(0.1),
-                    ),
-                  if (selectedSubject != null)
-                    Chip(
-                      label: Text(selectedSubject!),
-                      backgroundColor: Colors.blue.withOpacity(0.1),
-                    ),
-                ],
               ),
             ),
+    );
+  }
 
-          // قائمة الملفات
-          Expanded(
-            child: filesToShow.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.search_off,
-                            size: 80, color: Colors.grey[300]),
-                        SizedBox(height: 20),
-                        Text(
-                          searchQuery.isNotEmpty
-                              ? "لا توجد نتائج للبحث عن '$searchQuery'"
-                              : "لا توجد ملفات مطابقة",
-                          style:
-                              TextStyle(fontSize: 18, color: Colors.grey[600]),
-                          textAlign: TextAlign.center,
-                        ),
-                        SizedBox(height: 10),
-                        Text(
-                          searchQuery.isNotEmpty
-                              ? "جرب مصطلحات بحث مختلفة أو أعد تعيين الفلاتر"
-                              : "اختر مادة وصف أو قم برفع ملف جديد",
-                          style: TextStyle(color: Colors.grey[500]),
-                          textAlign: TextAlign.center,
-                        ),
-                        SizedBox(height: 20),
-                        ElevatedButton.icon(
-                          onPressed: _uploadFile,
-                          icon: Icon(Icons.upload),
-                          label: Text("رفع ملف جديد"),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Color(0xFF667eea),
-                            foregroundColor: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    padding: EdgeInsets.all(16),
-                    itemCount: filesToShow.length,
-                    itemBuilder: (context, index) {
-                      final file = filesToShow[index];
-                      return _buildFileCard(file, index);
-                    },
-                  ),
-          ),
-        ],
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required IconData icon,
+    TextInputType keyboardType = TextInputType.text,
+  }) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        prefixIcon: Icon(icon, color: Colors.blue[700]),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: Colors.blue[700]!),
+        ),
       ),
     );
   }
 
-  Widget _buildStatItem(IconData icon, String count, String label) {
+  Widget _buildDropdown({
+    required dynamic value,
+    required String label,
+    required String hint,
+    required IconData icon,
+    required List<DropdownMenuItem<dynamic>> items,
+    required Function(dynamic) onChanged,
+  }) {
+    return DropdownButtonFormField(
+      value: value,
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        prefixIcon: Icon(icon, color: Colors.blue[700]),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: Colors.blue[700]!),
+        ),
+      ),
+      items: [
+        DropdownMenuItem(
+          value: null,
+          child: Text(hint, style: TextStyle(color: Colors.grey)),
+        ),
+        ...items,
+      ],
+      onChanged: onChanged,
+      validator: (value) {
+        if (label.contains('*') && value == null) {
+          return 'هذا الحقل مطلوب';
+        }
+        return null;
+      },
+    );
+  }
+
+  Widget _buildFilePicker() {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          padding: EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.2),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, color: Colors.white, size: 20),
-        ),
-        SizedBox(height: 5),
         Text(
-          count,
+          'اختر ملف الكتاب *',
           style: TextStyle(
-            color: Colors.white,
             fontSize: 16,
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w500,
+            color: Colors.grey[700],
           ),
         ),
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.white.withOpacity(0.8),
-            fontSize: 10,
+        SizedBox(height: 8),
+        Container(
+          height: 120,
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey[300]!),
+            borderRadius: BorderRadius.circular(10),
+            color: Colors.grey[50],
+          ),
+          child: InkWell(
+            onTap: _pickFile,
+            borderRadius: BorderRadius.circular(10),
+            child: _selectedFile == null
+                ? Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.cloud_upload,
+                          size: 40, color: Colors.grey[400]),
+                      SizedBox(height: 8),
+                      Text(
+                        'انقر لاختيار الملف',
+                        style: TextStyle(color: Colors.grey[600]),
+                      ),
+                      Text(
+                        'PDF, Word, PowerPoint, Images',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                      ),
+                    ],
+                  )
+                : Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        Icon(Icons.attach_file, size: 40, color: Colors.green),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                _fileNameController.text,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                _filePathController.text,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[600],
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                '${(_selectedFile!.lengthSync() / 1024 / 1024).toStringAsFixed(2)} MB',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.blue[700],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.close, color: Colors.red),
+                          onPressed: () {
+                            setState(() {
+                              _selectedFile = null;
+                              _fileNameController.clear();
+                              _filePathController.clear();
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildFileCard(Map<String, dynamic> file, int index) {
-    return Container(
-      margin: EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 10,
-            offset: Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => _showFileDetails(file),
-          borderRadius: BorderRadius.circular(15),
-          child: Padding(
-            padding: EdgeInsets.all(16),
-            child: Row(
-              children: [
-                _buildFileIcon(file["type"]),
-                SizedBox(width: 15),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        file["name"],
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                          color: Colors.black87,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Icon(Icons.school, size: 12, color: Colors.grey),
-                          SizedBox(width: 4),
-                          Text(
-                            file["subject"],
-                            style: TextStyle(
-                                fontSize: 11, color: Colors.grey[600]),
-                          ),
-                          SizedBox(width: 10),
-                          Icon(Icons.grade, size: 12, color: Colors.grey),
-                          SizedBox(width: 4),
-                          Text(
-                            file["grade"],
-                            style: TextStyle(
-                                fontSize: 11, color: Colors.grey[600]),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Icon(Icons.calendar_today,
-                              size: 12, color: Colors.grey),
-                          SizedBox(width: 4),
-                          Text(
-                            file["uploadDate"],
-                            style: TextStyle(fontSize: 10, color: Colors.grey),
-                          ),
-                          Spacer(),
-                          Text(
-                            _formatFileSize(file["size"]),
-                            style: TextStyle(fontSize: 10, color: Colors.grey),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                PopupMenuButton(
-                  icon: Icon(Icons.more_vert, color: Colors.grey[400]),
-                  itemBuilder: (context) => [
-                    PopupMenuItem(
-                      child: Row(
-                        children: [
-                          Icon(Icons.download, size: 20),
-                          SizedBox(width: 8),
-                          Text("تحميل"),
-                        ],
-                      ),
-                    ),
-                    PopupMenuItem(
-                      child: Row(
-                        children: [
-                          Icon(Icons.share, size: 20),
-                          SizedBox(width: 8),
-                          Text("مشاركة"),
-                        ],
-                      ),
-                    ),
-                    PopupMenuItem(
-                      child: Row(
-                        children: [
-                          Icon(Icons.delete, size: 20, color: Colors.red),
-                          SizedBox(width: 8),
-                          Text("حذف", style: TextStyle(color: Colors.red)),
-                        ],
-                      ),
-                      onTap: () => _deleteFile(allFiles.indexOf(file)),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
+  @override
+  void dispose() {
+    _bookTitleController.dispose();
+    _authorController.dispose();
+    _publisherController.dispose();
+    _fileNameController.dispose();
+    _filePathController.dispose();
+    super.dispose();
   }
 }

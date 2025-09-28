@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'package:admin/screens/main/main_screen.dart';
 import 'package:admin/ques_pass.blade.dart';
-import 'dart:async';
+import 'package:admin/RegisterPage.dart';
 
 class LoginApp extends StatelessWidget {
   const LoginApp({super.key});
@@ -28,57 +30,110 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
+  final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
-  bool _showFirstCat = true;
-  Timer? _typingTimer;
+  bool _isLoading = false;
+
+  String? _usernameError;
+  String? _emailError;
+  String? _passwordError;
 
   static const Color topBackgroundColor = Color.fromARGB(255, 246, 230, 204);
 
-  @override
-  void initState() {
-    super.initState();
-    _passwordController.addListener(_handlePasswordTyping);
-  }
-
-  void _handlePasswordTyping() {
-    if (_showFirstCat) {
-      setState(() {
-        _showFirstCat = false;
-      });
-    }
-
-    _typingTimer?.cancel();
-
-    _typingTimer = Timer(const Duration(seconds: 3), () {
-      setState(() {
-        _showFirstCat = true;
-      });
-    });
-  }
-
-  void _login() {
-    final name = _emailController.text;
+  Future<void> _login() async {
+    final username = _usernameController.text.trim();
+    final email = _emailController.text.trim();
     final password = _passwordController.text;
 
-    if (name == "alerwi" && password == "123") {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const MainScreen()),
+    // إعادة تعيين رسائل الخطأ
+    setState(() {
+      _usernameError = null;
+      _emailError = null;
+      _passwordError = null;
+    });
+
+    bool hasError = false;
+
+    if (username.isEmpty) {
+      _usernameError = 'يرجى إدخال اسم المستخدم';
+      hasError = true;
+    }
+
+    if (email.isEmpty) {
+      _emailError = 'يرجى إدخال البريد الإلكتروني';
+      hasError = true;
+    } else if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(email)) {
+      _emailError = 'صيغة البريد الإلكتروني غير صحيحة';
+      hasError = true;
+    }
+
+    if (password.isEmpty) {
+      _passwordError = 'يرجى إدخال كلمة المرور';
+      hasError = true;
+    }
+
+    if (hasError) {
+      setState(() {});
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final response = await http.post(
+        Uri.parse('http://192.168.1.102:8000/api/login'), // عدل حسب سيرفرك
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'name': username,
+          'email': email,
+          'password': password,
+        }),
       );
-    } else {
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          // نجاح تسجيل الدخول → الانتقال للصفحة الرئيسية
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const MainScreen()),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content:
+                    Text(data['message'] ?? 'البريد أو كلمة المرور غير صحيحة')),
+          );
+        }
+      } else {
+        final error = json.decode(response.body);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error['error'] ?? 'خطأ في تسجيل الدخول')),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("البيانات غير صحيحة")),
+        const SnackBar(content: Text('تعذر الاتصال بالسيرفر')),
       );
     }
   }
 
   @override
   void dispose() {
+    _usernameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
-    _typingTimer?.cancel();
     super.dispose();
   }
 
@@ -90,7 +145,7 @@ class _LoginPageState extends State<LoginPage> {
       backgroundColor: Colors.white,
       body: Stack(
         children: [
-          // 🎨 خلفية مائلة في الأعلى
+          // خلفية عليا
           ClipPath(
             clipper: TopClipper(),
             child: Container(
@@ -99,21 +154,15 @@ class _LoginPageState extends State<LoginPage> {
               color: topBackgroundColor,
             ),
           ),
-
-          // 🧾 محتوى الشاشة
+          // محتوى الصفحة
           Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Column(
                 children: [
                   const SizedBox(height: 60),
-
-                  // 🖼 الشعار
                   Image.asset('assets/images/logo.png', height: 100),
-
                   const SizedBox(height: 24),
-
-                  // 📝 نص الترحيب
                   Text(
                     'مرحبا',
                     style: TextStyle(
@@ -122,23 +171,20 @@ class _LoginPageState extends State<LoginPage> {
                       color: Colors.indigo[900],
                     ),
                   ),
-
                   const SizedBox(height: 8),
-
                   Text(
                     'قم بتسجيل الدخول إلى حسابك',
                     style: TextStyle(fontSize: 16, color: Colors.grey[700]),
                   ),
-
                   const SizedBox(height: 32),
 
-                  // 📧 حقل اسم المستخدم
+                  // اسم المستخدم
                   TextField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
+                    controller: _usernameController,
                     decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.person),
-                      labelText: 'أســــم الــمـــســتـخـدم',
+                      prefixIcon: const Icon(Icons.person_outline),
+                      labelText: 'اسم المستخدم',
+                      errorText: _usernameError,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -146,16 +192,33 @@ class _LoginPageState extends State<LoginPage> {
                       fillColor: Colors.white,
                     ),
                   ),
-
                   const SizedBox(height: 20),
 
-                  // 🔒 حقل كلمة المرور
+                  // البريد الإلكتروني
+                  TextField(
+                    controller: _emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: InputDecoration(
+                      prefixIcon: const Icon(Icons.email),
+                      labelText: 'البريد الإلكتروني',
+                      errorText: _emailError,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // كلمة المرور
                   TextField(
                     controller: _passwordController,
                     obscureText: true,
                     decoration: InputDecoration(
                       prefixIcon: const Icon(Icons.lock),
                       labelText: 'كلمة المرور',
+                      errorText: _passwordError,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -163,67 +226,59 @@ class _LoginPageState extends State<LoginPage> {
                       fillColor: Colors.white,
                     ),
                   ),
-
                   const SizedBox(height: 12),
 
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: () {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => const SecurityCheckPage()),
-                        );
-                        // تنفيذ عند نسيان كلمة المرور
-                      },
-                      child: const Text('نسيت كلمة المرور؟'),
-                    ),
+                  // روابط نسيت كلمة المرور وإنشاء حساب
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) =>
+                                    const SecurityCheckPage()),
+                          );
+                        },
+                        child: const Text('نسيت كلمة المرور؟'),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => const RegisterPage()),
+                          );
+                        },
+                        child: const Text("انشاء حساب"),
+                      ),
+                    ],
                   ),
 
                   const SizedBox(height: 20),
 
-                  // 🔘 زر تسجيل الدخول
-                  ElevatedButton(
-                    onPressed: _login,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.indigo,
-                      minimumSize: const Size(double.infinity, 50),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text(
-                      'تسجيل الدخول',
-                      style: TextStyle(fontSize: 18, color: Colors.white),
-                    ),
-                  ),
+                  // زر تسجيل الدخول أو مؤشر التحميل
+                  _isLoading
+                      ? const CircularProgressIndicator()
+                      : ElevatedButton(
+                          onPressed: _login,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.indigo,
+                            minimumSize: const Size(double.infinity, 50),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            'تسجيل الدخول',
+                            style: TextStyle(fontSize: 18, color: Colors.white),
+                          ),
+                        ),
 
                   const SizedBox(height: 60),
                 ],
               ),
-            ),
-          ),
-
-          // 🐱 صورة القط في الأسفل
-          Positioned(
-            bottom: 20,
-            left: MediaQuery.of(context).size.width / 2 - 40,
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
-              child: _showFirstCat
-                  ? Image.asset(
-                      'assets/images/as1.png',
-                      key: const ValueKey('as1'),
-                      height: 50,
-                      width: 80,
-                    )
-                  : Image.asset(
-                      'assets/images/as2.png',
-                      key: const ValueKey('as2'),
-                      height: 50,
-                      width: 80,
-                    ),
             ),
           ),
         ],
@@ -232,22 +287,15 @@ class _LoginPageState extends State<LoginPage> {
   }
 }
 
-// 🎨 ClipPath لعمل الجزء العلوي مائل
 class TopClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {
     final path = Path();
-
     path.lineTo(0, size.height - 60);
     path.quadraticBezierTo(
-      size.width / 2,
-      size.height,
-      size.width,
-      size.height - 60,
-    );
+        size.width / 2, size.height, size.width, size.height - 60);
     path.lineTo(size.width, 0);
     path.close();
-
     return path;
   }
 

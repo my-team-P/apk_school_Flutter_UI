@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:admin/screens/main/main_screen.dart';
 
 class StorePage extends StatefulWidget {
@@ -9,105 +11,12 @@ class StorePage extends StatefulWidget {
 }
 
 class _StorePageState extends State<StorePage> {
-  // بيانات الاختبارات
-  final List<Map<String, dynamic>> _allExams = [
-    {
-      "id": "1",
-      "subject": "الرياضيات",
-      "teacher": "أحمد محمد",
-      "date": "2024-03-20",
-      "time": "09:00 ص",
-      "duration": "90 دقيقة",
-      "class": "الصف العاشر",
-      "section": "أ",
-      "type": "فصلي",
-      "room": "القاعة 101",
-      "status": "قادم",
-      "importance": "عالية",
-      "syllabus": "الفصول 1-4",
-      "notes": "يسمح باستخدام الآلة الحاسبة"
-    },
-    {
-      "id": "2",
-      "subject": "اللغة العربية",
-      "teacher": "فاطمة عبدالله",
-      "date": "2024-03-22",
-      "time": "10:30 ص",
-      "duration": "120 دقيقة",
-      "class": "الصف التاسع",
-      "section": "ب",
-      "type": "بسيط",
-      "room": "القاعة 203",
-      "status": "قادم",
-      "importance": "متوسطة",
-      "syllabus": "النصوص الأدبية",
-      "notes": "اختبار كتابي فقط"
-    },
-    {
-      "id": "3",
-      "subject": "العلوم",
-      "teacher": "خالد إبراهيم",
-      "date": "2024-03-18",
-      "time": "08:00 ص",
-      "duration": "60 دقيقة",
-      "class": "الصف الثامن",
-      "section": "ج",
-      "type": "عملي",
-      "room": "المختبر 1",
-      "status": "منتهي",
-      "importance": "عالية",
-      "syllabus": "التفاعلات الكيميائية",
-      "notes": "يرجى إحضار معطف المختبر"
-    },
-    {
-      "id": "4",
-      "subject": "اللغة الإنجليزية",
-      "teacher": "سارة سميث",
-      "date": "2024-03-25",
-      "time": "11:00 ص",
-      "duration": "90 دقيقة",
-      "class": "الصف العاشر",
-      "section": "أ",
-      "type": "استماع ومحادثة",
-      "room": "معمل اللغات",
-      "status": "قادم",
-      "importance": "عالية",
-      "syllabus": "Unit 5-6",
-      "notes": "سيتم اختبار المحادثة"
-    },
-    {
-      "id": "5",
-      "subject": "التربية الإسلامية",
-      "teacher": "محمد علي",
-      "date": "2024-03-19",
-      "time": "01:30 م",
-      "duration": "45 دقيقة",
-      "class": "الصف السابع",
-      "section": "أ",
-      "type": "تحريري",
-      "room": "القاعة 105",
-      "status": "منتهي",
-      "importance": "منخفضة",
-      "syllabus": "سورة البقرة",
-      "notes": "أسئلة موضوعية"
-    },
-    {
-      "id": "6",
-      "subject": "الحاسب الآلي",
-      "teacher": "علي حسن",
-      "date": "2024-03-27",
-      "time": "02:00 م",
-      "duration": "120 دقيقة",
-      "class": "الصف الحادي عشر",
-      "section": "ب",
-      "type": "عملي",
-      "room": "معمل الحاسوب 2",
-      "status": "قادم",
-      "importance": "عالية",
-      "syllabus": "برمجة Python",
-      "notes": "اختبار عملي على الحاسوب"
-    },
-  ];
+  // قائمة الاختبارات القادمة من API
+  List<dynamic> _allExams = [];
+
+  // قوائم المواد والصفوف
+  Map<int, String> _subjectsMap = {};
+  Map<int, String> _classesMap = {};
 
   // عوامل التصفية
   String? _selectedSubject;
@@ -117,86 +26,167 @@ class _StorePageState extends State<StorePage> {
   DateTime? _selectedDate;
   String _searchQuery = '';
 
-  final List<String> _subjects = [
-    "الرياضيات",
-    "اللغة العربية",
-    "العلوم",
-    "اللغة الإنجليزية",
-    "التربية الإسلامية",
-    "الحاسب الآلي",
-    "الدراسات الاجتماعية",
-    "التربية الفنية"
-  ];
+  bool _isLoading = true;
 
-  final List<String> _classes = [
-    "الصف السابع",
-    "الصف الثامن",
-    "الصف التاسع",
-    "الصف العاشر",
-    "الصف الحادي عشر",
-    "الصف الثاني عشر"
-  ];
-
-  final List<String> _statuses = ["قادم", "منتهي", "ملغى"];
+  final List<String> _statuses = ["قادم", "منتهي", "ملغي"];
   final List<String> _importanceLevels = ["عالية", "متوسطة", "منخفضة"];
 
-  // الحصول على الاختبارات المصفاة
-  List<Map<String, dynamic>> get _filteredExams {
+  final String _apiUrl = 'http://192.168.1.102:8000/api/exams';
+  final String _subjectsUrl = 'http://192.168.1.102:8000/api/subjects';
+  final String _classesUrl = 'http://192.168.1.102:8000/api/classes';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAllData();
+  }
+
+  Future<void> _loadAllData() async {
+    setState(() => _isLoading = true);
+    try {
+      // جلب البيانات بالتوازي
+      final [examsResponse, subjectsResponse, classesResponse] =
+          await Future.wait([
+        http.get(Uri.parse(_apiUrl)),
+        http.get(Uri.parse(_subjectsUrl)),
+        http.get(Uri.parse(_classesUrl)),
+      ]);
+
+      // معالجة الاختبارات
+      if (examsResponse.statusCode == 200) {
+        final data = json.decode(examsResponse.body);
+        if (data is List) {
+          setState(() {
+            _allExams = data;
+          });
+        } else if (data['data'] is List) {
+          setState(() {
+            _allExams = data['data'];
+          });
+        }
+        print('Loaded ${_allExams.length} exams');
+      }
+
+      // معالجة المواد
+      if (subjectsResponse.statusCode == 200) {
+        final data = json.decode(subjectsResponse.body);
+        final subjectsList =
+            data is List ? data : data['data'] ?? data['subjects'] ?? [];
+        _subjectsMap = _convertListToMap(subjectsList, 'id', 'subject_name');
+        print('Loaded ${_subjectsMap.length} subjects: $_subjectsMap');
+      }
+
+      // معالجة الصفوف
+      if (classesResponse.statusCode == 200) {
+        final data = json.decode(classesResponse.body);
+        final classesList =
+            data is List ? data : data['data'] ?? data['classes'] ?? [];
+        _classesMap = _convertListToMap(classesList, 'id', 'grade_name');
+        print('Loaded ${_classesMap.length} classes: $_classesMap');
+      }
+    } catch (e) {
+      print('Error loading data: $e');
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Map<int, String> _convertListToMap(
+      List<dynamic> list, String idKey, String nameKey) {
+    final map = <int, String>{};
+    for (var item in list) {
+      if (item is Map) {
+        final id = item[idKey] is int
+            ? item[idKey]
+            : int.tryParse(item[idKey]?.toString() ?? '');
+        final name = item[nameKey]?.toString();
+        if (id != null && name != null) {
+          map[id] = name;
+        }
+      }
+    }
+    return map;
+  }
+
+  // الحصول على اسم المادة من الـ ID
+  String _getSubjectName(int subjectId) {
+    return _subjectsMap[subjectId] ?? 'مادة $subjectId';
+  }
+
+  // الحصول على اسم الصف من الـ ID
+  String _getClassName(int gradeId) {
+    return _classesMap[gradeId] ?? 'صف $gradeId';
+  }
+
+  // دالة محسنة للحصول على خصائص الامتحان
+  String _getExamProperty(dynamic exam, String type) {
+    if (exam is! Map) return 'غير معروف';
+
+    switch (type) {
+      case 'subject':
+        final subjectId = exam['subject_id'] is int
+            ? exam['subject_id']
+            : int.tryParse(exam['subject_id']?.toString() ?? '');
+        return subjectId != null ? _getSubjectName(subjectId) : 'غير معروف';
+
+      case 'class':
+        final gradeId = exam['grade_id'] is int
+            ? exam['grade_id']
+            : int.tryParse(exam['grade_id']?.toString() ?? '');
+        return gradeId != null ? _getClassName(gradeId) : 'غير معروف';
+
+      case 'status':
+        final status = exam['status'];
+        return (status != null && status != 'null')
+            ? status.toString()
+            : 'قادم';
+
+      case 'importance':
+        final importance = exam['importance'];
+        return (importance != null && importance != 'null')
+            ? importance.toString()
+            : 'متوسطة';
+
+      case 'type':
+        final examType = exam['type'];
+        return (examType != null && examType != 'null')
+            ? examType.toString()
+            : 'شهري';
+
+      case 'note':
+        final note = exam['note'];
+        return (note != null && note != 'null') ? note.toString() : '';
+
+      default:
+        return 'غير معروف';
+    }
+  }
+
+  List<dynamic> get _filteredExams {
     return _allExams.where((exam) {
+      final subject = _getExamProperty(exam, 'subject');
+      final className = _getExamProperty(exam, 'class');
+      final status = _getExamProperty(exam, 'status');
+      final importance = _getExamProperty(exam, 'importance');
+
       final matchesSubject =
-          _selectedSubject == null || exam["subject"] == _selectedSubject;
+          _selectedSubject == null || subject == _selectedSubject;
       final matchesClass =
-          _selectedClass == null || exam["class"] == _selectedClass;
+          _selectedClass == null || className == _selectedClass;
       final matchesStatus =
-          _selectedStatus == null || exam["status"] == _selectedStatus;
-      final matchesImportance = _selectedImportance == null ||
-          exam["importance"] == _selectedImportance;
-      final matchesDate = _selectedDate == null ||
-          _isSameDay(_parseDate(exam["date"]), _selectedDate!);
+          _selectedStatus == null || status == _selectedStatus;
+      final matchesImportance =
+          _selectedImportance == null || importance == _selectedImportance;
       final matchesSearch = _searchQuery.isEmpty ||
-          exam["subject"].toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          exam["teacher"].toLowerCase().contains(_searchQuery.toLowerCase());
+          subject.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          className.toLowerCase().contains(_searchQuery.toLowerCase());
 
       return matchesSubject &&
           matchesClass &&
           matchesStatus &&
           matchesImportance &&
-          matchesDate &&
           matchesSearch;
     }).toList();
-  }
-
-  DateTime _parseDate(String dateString) {
-    try {
-      final parts = dateString.split('-');
-      if (parts.length == 3) {
-        return DateTime(
-            int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
-      }
-    } catch (e) {
-      print('Error parsing date: $dateString, error: $e');
-    }
-    return DateTime.now();
-  }
-
-  bool _isSameDay(DateTime date1, DateTime date2) {
-    return date1.year == date2.year &&
-        date1.month == date2.month &&
-        date1.day == date2.day;
-  }
-
-  // دالة تنسيق التاريخ المحسنة
-  String _formatDate(String dateString) {
-    try {
-      final date = _parseDate(dateString);
-      return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-    } catch (e) {
-      return dateString;
-    }
-  }
-
-  String _formatDateTime(DateTime date) {
-    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
   }
 
   void _clearFilters() {
@@ -210,7 +200,24 @@ class _StorePageState extends State<StorePage> {
     });
   }
 
-  void _showExamDetails(Map<String, dynamic> exam) {
+  void _showExamDetails(dynamic exam) {
+    if (exam is! Map) return;
+
+    final subjectId = exam['subject_id'] is int
+        ? exam['subject_id']
+        : int.tryParse(exam['subject_id']?.toString() ?? '');
+    final gradeId = exam['grade_id'] is int
+        ? exam['grade_id']
+        : int.tryParse(exam['grade_id']?.toString() ?? '');
+
+    final subjectName =
+        subjectId != null ? _getSubjectName(subjectId) : 'غير معروف';
+    final className = gradeId != null ? _getClassName(gradeId) : 'غير معروف';
+    final status = exam['status']?.toString() ?? 'قادم';
+    final importance = exam['importance']?.toString() ?? 'متوسطة';
+    final type = exam['type']?.toString() ?? 'شهري';
+    final note = exam['note']?.toString() ?? '';
+
     showModalBottomSheet(
       context: context,
       shape: RoundedRectangleBorder(
@@ -219,85 +226,48 @@ class _StorePageState extends State<StorePage> {
       isScrollControlled: true,
       builder: (context) => Container(
         padding: EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(2),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
-            ),
-            SizedBox(height: 20),
-            Row(
-              children: [
-                _buildSubjectIcon(exam["subject"]),
-                SizedBox(width: 15),
-                Expanded(
-                  child: Text(
-                    exam["subject"],
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                ),
-                _buildStatusChip(exam["status"]),
-              ],
-            ),
-            SizedBox(height: 20),
-            _buildDetailRow("المعلم", exam["teacher"], Icons.person),
-            _buildDetailRow(
-                "الصف", "${exam["class"]} - ${exam["section"]}", Icons.school),
-            _buildDetailRow(
-                "التاريخ", _formatDate(exam["date"]), Icons.calendar_today),
-            _buildDetailRow("الوقت", exam["time"], Icons.access_time),
-            _buildDetailRow("المدة", exam["duration"], Icons.timer),
-            _buildDetailRow("القاعة", exam["room"], Icons.room),
-            _buildDetailRow("نوع الاختبار", exam["type"], Icons.assignment),
-            _buildDetailRow("الأهمية", exam["importance"], Icons.flag),
-            SizedBox(height: 15),
-            Text("المقرر:", style: TextStyle(fontWeight: FontWeight.bold)),
-            Text(exam["syllabus"], style: TextStyle(color: Colors.grey[700])),
-            SizedBox(height: 10),
-            Text("ملاحظات:", style: TextStyle(fontWeight: FontWeight.bold)),
-            Text(exam["notes"], style: TextStyle(color: Colors.grey[700])),
-            SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      _setReminder(exam);
-                    },
-                    icon: Icon(Icons.notifications),
-                    label: Text("تذكير"),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
-                      foregroundColor: Colors.white,
+              SizedBox(height: 20),
+              Row(
+                children: [
+                  _buildSubjectIcon(subjectName),
+                  SizedBox(width: 15),
+                  Expanded(
+                    child: Text(
+                      subjectName,
+                      style:
+                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                     ),
                   ),
-                ),
-                SizedBox(width: 10),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      _shareExam(exam);
-                    },
-                    icon: Icon(Icons.share),
-                    label: Text("مشاركة"),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 10),
-          ],
+                  _buildStatusChip(status),
+                ],
+              ),
+              SizedBox(height: 20),
+              _buildDetailRow("الصف", className, Icons.school),
+              _buildDetailRow("نوع الاختبار", type, Icons.assignment),
+              _buildDetailRow("الأهمية", importance, Icons.flag),
+              _buildDetailRow("الحالة", status, Icons.info),
+              SizedBox(height: 15),
+              Text("ملاحظات:", style: TextStyle(fontWeight: FontWeight.bold)),
+              Text(note.isEmpty ? "-" : note,
+                  style: TextStyle(color: Colors.grey[700])),
+              SizedBox(height: 20),
+            ],
+          ),
         ),
       ),
     );
@@ -311,7 +281,7 @@ class _StorePageState extends State<StorePage> {
           Icon(icon, size: 20, color: Colors.grey[600]),
           SizedBox(width: 10),
           Text("$label: ", style: TextStyle(fontWeight: FontWeight.bold)),
-          Text(value),
+          Expanded(child: Text(value)),
         ],
       ),
     );
@@ -349,7 +319,7 @@ class _StorePageState extends State<StorePage> {
       case "منتهي":
         color = Colors.grey;
         break;
-      case "ملغى":
+      case "ملغي":
         color = Colors.red;
         break;
       default:
@@ -363,22 +333,24 @@ class _StorePageState extends State<StorePage> {
     );
   }
 
-  void _setReminder(Map<String, dynamic> exam) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text("تم ضبط تذكير لاختبار ${exam["subject"]}"),
-        backgroundColor: Colors.green,
-      ),
-    );
+  // الحصول على قائمة المواد للفلاتر
+  List<String> get _availableSubjects {
+    final subjectIds = _allExams
+        .map((exam) => exam['subject_id']?.toString())
+        .whereType<String>()
+        .toSet();
+    return subjectIds
+        .map((id) => _getSubjectName(int.tryParse(id) ?? 0))
+        .toList();
   }
 
-  void _shareExam(Map<String, dynamic> exam) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text("تم مشاركة تفاصيل الاختبار"),
-        backgroundColor: Colors.blue,
-      ),
-    );
+  // الحصول على قائمة الصفوف للفلاتر
+  List<String> get _availableClasses {
+    final gradeIds = _allExams
+        .map((exam) => exam['grade_id']?.toString())
+        .whereType<String>()
+        .toSet();
+    return gradeIds.map((id) => _getClassName(int.tryParse(id) ?? 0)).toList();
   }
 
   @override
@@ -398,10 +370,7 @@ class _StorePageState extends State<StorePage> {
       appBar: AppBar(
         title: Text(
           "جدول الاختبارات",
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
         backgroundColor: Color(0xFF667eea),
         elevation: 0,
@@ -416,268 +385,168 @@ class _StorePageState extends State<StorePage> {
         ),
         actions: [
           if (activeFiltersCount > 0)
-            Badge(
+            Chip(
               label: Text(activeFiltersCount.toString()),
-              child: IconButton(
-                icon: Icon(Icons.filter_alt, color: Colors.white),
-                onPressed: _clearFilters,
-                tooltip: "مسح الفلاتر",
-              ),
+              backgroundColor: Colors.red,
             ),
           IconButton(
-            icon: Icon(Icons.calendar_today, color: Colors.white),
-            onPressed: () {
-              _showCalendarView();
-            },
-            tooltip: "عرض التقويم",
+            icon: Icon(Icons.refresh, color: Colors.white),
+            onPressed: _loadAllData,
+            tooltip: "تحديث البيانات",
           ),
         ],
       ),
-      body: Column(
-        children: [
-          // شريط البحث
-          Container(
-            padding: EdgeInsets.all(16),
-            color: Colors.white,
-            child: TextField(
-              onChanged: (value) => setState(() => _searchQuery = value),
-              decoration: InputDecoration(
-                hintText: "ابحث باسم المادة أو المعلم...",
-                prefixIcon: Icon(Icons.search),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: Icon(Icons.clear),
-                        onPressed: () => setState(() => _searchQuery = ''),
-                      )
-                    : null,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ),
-
-          // الفلاتر
-          Container(
-            padding: EdgeInsets.all(16),
-            color: Colors.grey[100],
-            child: Column(
+      body: _isLoading
+          ? Center(child: CircularProgressIndicator())
+          : Column(
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: _selectedSubject,
+                // شريط البحث والفلاتر المبسط
+                Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      TextField(
                         decoration: InputDecoration(
-                          labelText: "المادة",
+                          hintText: "ابحث باسم المادة أو الصف...",
+                          prefixIcon: Icon(Icons.search),
                           border: OutlineInputBorder(),
-                          isDense: true,
                         ),
-                        items: _subjects
-                            .map((subject) => DropdownMenuItem(
-                                  value: subject,
-                                  child: Text(subject),
-                                ))
-                            .toList(),
-                        onChanged: (value) =>
-                            setState(() => _selectedSubject = value),
+                        onChanged: (value) {
+                          setState(() {
+                            _searchQuery = value;
+                          });
+                        },
                       ),
-                    ),
-                    SizedBox(width: 10),
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: _selectedClass,
-                        decoration: InputDecoration(
-                          labelText: "الصف",
-                          border: OutlineInputBorder(),
-                          isDense: true,
+                      SizedBox(height: 10),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            FilterChip(
+                              label: Text("الكل"),
+                              selected: activeFiltersCount == 0,
+                              onSelected: (_) => _clearFilters(),
+                            ),
+                            SizedBox(width: 8),
+                            FilterChip(
+                              label: Text("قادم"),
+                              selected: _selectedStatus == "قادم",
+                              onSelected: (_) => setState(() {
+                                _selectedStatus =
+                                    _selectedStatus == "قادم" ? null : "قادم";
+                              }),
+                            ),
+                            SizedBox(width: 8),
+                            FilterChip(
+                              label: Text("منتهي"),
+                              selected: _selectedStatus == "منتهي",
+                              onSelected: (_) => setState(() {
+                                _selectedStatus =
+                                    _selectedStatus == "منتهي" ? null : "منتهي";
+                              }),
+                            ),
+                            SizedBox(width: 8),
+                            FilterChip(
+                              label: Text("ملغي"),
+                              selected: _selectedStatus == "ملغي",
+                              onSelected: (_) => setState(() {
+                                _selectedStatus =
+                                    _selectedStatus == "ملغي" ? null : "ملغي";
+                              }),
+                            ),
+                          ],
                         ),
-                        items: _classes
-                            .map((cls) => DropdownMenuItem(
-                                  value: cls,
-                                  child: Text(cls),
-                                ))
-                            .toList(),
-                        onChanged: (value) =>
-                            setState(() => _selectedClass = value),
                       ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: _selectedStatus,
-                        decoration: InputDecoration(
-                          labelText: "الحالة",
-                          border: OutlineInputBorder(),
-                          isDense: true,
-                        ),
-                        items: _statuses
-                            .map((status) => DropdownMenuItem(
-                                  value: status,
-                                  child: Text(status),
-                                ))
-                            .toList(),
-                        onChanged: (value) =>
-                            setState(() => _selectedStatus = value),
-                      ),
-                    ),
-                    SizedBox(width: 10),
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: _selectedImportance,
-                        decoration: InputDecoration(
-                          labelText: "الأهمية",
-                          border: OutlineInputBorder(),
-                          isDense: true,
-                        ),
-                        items: _importanceLevels
-                            .map((importance) => DropdownMenuItem(
-                                  value: importance,
-                                  child: Text(importance),
-                                ))
-                            .toList(),
-                        onChanged: (value) =>
-                            setState(() => _selectedImportance = value),
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 10),
-                ElevatedButton.icon(
-                  onPressed: () => _selectDate(context),
-                  icon: Icon(Icons.calendar_today),
-                  label: Text(_selectedDate == null
-                      ? "اختر تاريخ"
-                      : _formatDateTime(_selectedDate!)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.black,
-                    minimumSize: Size(double.infinity, 50),
+                    ],
                   ),
                 ),
-              ],
-            ),
-          ),
 
-          // إحصائيات سريعة
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            color: Colors.grey[50],
-            child: Row(
-              children: [
-                Text(
-                  "عرض ${filteredExams.length} من ${_allExams.length} اختبار",
-                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                ),
-                Spacer(),
-                if (activeFiltersCount > 0)
-                  Text(
-                    "$activeFiltersCount فلتر نشط",
-                    style: TextStyle(color: Colors.blue, fontSize: 12),
-                  ),
-              ],
-            ),
-          ),
-
-          // قائمة الاختبارات
-          Expanded(
-            child: filteredExams.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.assignment,
-                            size: 80, color: Colors.grey[300]),
-                        SizedBox(height: 20),
-                        Text(
-                          "لا توجد اختبارات مطابقة",
-                          style:
-                              TextStyle(fontSize: 18, color: Colors.grey[600]),
-                        ),
-                        SizedBox(height: 10),
-                        Text(
-                          "جرب تغيير عوامل التصفية",
-                          style: TextStyle(color: Colors.grey[500]),
-                        ),
-                        SizedBox(height: 20),
-                        ElevatedButton(
+                // عدد النتائج
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        "الاختبارات (${filteredExams.length})",
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      if (activeFiltersCount > 0)
+                        TextButton(
                           onPressed: _clearFilters,
-                          child: Text("مسح جميع الفلاتر"),
+                          child: Text("مسح الفلاتر"),
                         ),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    padding: EdgeInsets.all(16),
-                    itemCount: filteredExams.length,
-                    itemBuilder: (context, index) {
-                      final exam = filteredExams[index];
-                      return _buildExamCard(exam);
-                    },
+                    ],
                   ),
-          ),
-        ],
-      ),
+                ),
+
+                // قائمة الاختبارات
+                Expanded(
+                  child: filteredExams.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.assignment,
+                                  size: 80, color: Colors.grey[300]),
+                              SizedBox(height: 20),
+                              Text(
+                                _allExams.isEmpty
+                                    ? "لا توجد اختبارات"
+                                    : "لا توجد اختبارات مطابقة",
+                                style: TextStyle(
+                                    fontSize: 18, color: Colors.grey[600]),
+                              ),
+                              SizedBox(height: 10),
+                              if (_allExams.isNotEmpty)
+                                ElevatedButton(
+                                  onPressed: _clearFilters,
+                                  child: Text("مسح جميع الفلاتر"),
+                                ),
+                            ],
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: EdgeInsets.all(16),
+                          itemCount: filteredExams.length,
+                          itemBuilder: (context, index) {
+                            final exam = filteredExams[index];
+                            return _buildExamCard(exam);
+                          },
+                        ),
+                ),
+              ],
+            ),
     );
   }
 
-  Widget _buildExamCard(Map<String, dynamic> exam) {
-    final isPast = exam["status"] == "منتهي";
+  Widget _buildExamCard(dynamic exam) {
+    final subject = _getExamProperty(exam, 'subject');
+    final status = _getExamProperty(exam, 'status');
+    final className = _getExamProperty(exam, 'class');
+    final importance = _getExamProperty(exam, 'importance');
+    final type = _getExamProperty(exam, 'type');
 
     return Card(
       margin: EdgeInsets.only(bottom: 12),
       elevation: 3,
       child: ListTile(
-        leading: _buildSubjectIcon(exam["subject"]),
+        leading: _buildSubjectIcon(subject),
         title: Text(
-          exam["subject"],
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            decoration: isPast ? TextDecoration.lineThrough : null,
-            color: isPast ? Colors.grey : Colors.black,
-          ),
+          subject,
+          style: TextStyle(fontWeight: FontWeight.bold),
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("${exam["class"]} - ${exam["teacher"]}"),
-            Text("${exam["date"]} - ${exam["time"]}"),
+            Text("الصف: $className"),
+            Text("$type - الأهمية: $importance"),
           ],
         ),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _buildStatusChip(exam["status"]),
-            SizedBox(height: 4),
-            Text(exam["duration"], style: TextStyle(fontSize: 12)),
-          ],
-        ),
+        trailing: _buildStatusChip(status),
         onTap: () => _showExamDetails(exam),
       ),
-    );
-  }
-
-  Future<void> _selectDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate ?? DateTime.now(),
-      firstDate: DateTime(2024),
-      lastDate: DateTime(2025),
-    );
-    if (picked != null && picked != _selectedDate) {
-      setState(() {
-        _selectedDate = picked;
-      });
-    }
-  }
-
-  void _showCalendarView() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("عرض التقويم - قريباً")),
     );
   }
 }
