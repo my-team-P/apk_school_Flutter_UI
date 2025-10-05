@@ -10,73 +10,165 @@ class ChatPage extends StatefulWidget {
   State<ChatPage> createState() => _ChatPageState();
 }
 
-// server AI
-String ser = "http://192.168.1.101:8000/chat";
-
 class _ChatPageState extends State<ChatPage> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final List<Map<String, dynamic>> _messages = [];
   bool _isLoading = false;
-  bool _isConnected = true;
 
-  // موضوعات مقترحة للدردشة
-  final List<Map<String, String>> _suggestedTopics = [
-    {
-      "title": "💡 مساعدة دراسية",
-      "subtitle": "اسأل عن أي موضوع تعليمي"
-    },
-    {
-      "title": "📚 شرح الدروس",
-      "subtitle": "احصل على شرح مفصل للدروس"
-    },
-    {
-      "title": "✍️ حل الواجبات",
-      "subtitle": "مساعدة في حل التمارين"
-    },
-    {
-      "title": "🧮 مسائل رياضية",
-      "subtitle": "حل المسائل الرياضية خطوة بخطوة"
-    },
-    {
-      "title": "🔬 تجارب علمية",
-      "subtitle": "شرح التجارب العلمية"
-    },
-    {
-      "title": "📖 نصائح دراسة",
-      "subtitle": "تحسين طرق الدراسة"
-    },
+  // خدمات الذكاء الاصطناعي المجانية
+  final List<String> _aiServices = [
+    "HuggingFace",
+    "DeepAI",
+    "OpenAssistant",
   ];
+  int _currentServiceIndex = 0;
 
-  Future<String> sendMessage(String text) async {
+  Future<String> _sendToHuggingFace(String text) async {
+    try {
+      final response = await http
+          .post(
+            Uri.parse(
+                "https://api-inference.huggingface.co/models/microsoft/DialoGPT-medium"),
+            headers: {
+              "Authorization":
+                  "Bearer HUGGINGYOUR_FACE_TOKEN", // احصل على token مجاني من huggingface.co
+              "Content-Type": "application/json",
+            },
+            body: jsonEncode({"inputs": text}),
+          )
+          .timeout(Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data["generated_text"] ??
+            "لم أستطع فهم سؤالك. يمكنك إعادة الصياغة؟";
+      } else {
+        return "⚠️ الخدمة مشغولة حالياً. جرب خدمة أخرى.";
+      }
+    } catch (e) {
+      return "⚠️ تعذر الاتصال بالخدمة. جرب خدمة أخرى.";
+    }
+  }
+
+  Future<String> _sendToDeepAI(String text) async {
     try {
       final response = await http.post(
-        Uri.parse(ser),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({"text": text}),
+        Uri.parse("https://api.deepai.org/api/text-generator"),
+        headers: {
+          "api-key":
+              "3b4fb449-714c-4958-952b-c52674a98db2", // احصل على key مجاني من deepai.org
+        },
+        body: {
+          "text": text,
+        },
       ).timeout(Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        setState(() {
-          _isConnected = true;
-        });
-        return data["reply"];
+        return data["output"] ?? "أحتاج إلى مزيد من التوضيح.";
       } else {
-        setState(() {
-          _isConnected = false;
-        });
-        return "⚠️ عذراً، حدث خطأ في السيرفر. الرجاء المحاولة لاحقاً.";
+        return "⚠️ الخدمة غير متاحة حالياً.";
       }
     } catch (e) {
-      setState(() {
-        _isConnected = false;
-      });
-      return "⚠️ تعذر الاتصال بالسيرفر. تأكد من اتصال الشبكة.";
+      return "⚠️ فشل الاتصال بالخدمة.";
     }
   }
 
-  void _send() async {
+  Future<String> _sendToOpenAssistant(String text) async {
+    try {
+      final response = await http
+          .post(
+            Uri.parse("https://api.openassistant.ai/chat"),
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: jsonEncode({"message": text, "model": "oa-mini"}),
+          )
+          .timeout(Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data["response"] ?? "يمكنك طرح سؤالك بطريقة أخرى.";
+      } else {
+        return "⚠️ الخدمة متوقفة حالياً.";
+      }
+    } catch (e) {
+      return "⚠️ لا يمكن الوصول إلى الخدمة.";
+    }
+  }
+
+  Future<String> _sendToFreeAI(String text) async {
+    // محاولة الخدمات بالترتيب
+    switch (_currentServiceIndex) {
+      case 0: // HuggingFace
+        final result = await _sendToHuggingFace(text);
+        if (!result.contains("⚠️")) return result;
+        break;
+      case 1: // DeepAI
+        final result = await _sendToDeepAI(text);
+        if (!result.contains("⚠️")) return result;
+        break;
+      case 2: // OpenAssistant
+        final result = await _sendToOpenAssistant(text);
+        if (!result.contains("⚠️")) return result;
+        break;
+    }
+
+    // إذا فشلت الخدمة الحالية، جرب الخدمة التالية
+    _currentServiceIndex = (_currentServiceIndex + 1) % _aiServices.length;
+    return await _sendToFreeAI(text); // إعادة المحاولة مع الخدمة التالية
+  }
+
+  Future<String> _getAIResponse(String text) async {
+    // إذا كان السؤال بسيطاً، استخدم ردود مسبقة
+    final lowerText = text.toLowerCase();
+
+    Map<String, String> quickResponses = {
+      "مرحبا": "مرحباً! كيف يمكنني مساعدتك اليوم؟ 😊",
+      "اهلا": "أهلاً وسهلاً! أنا هنا لمساعدتك. 💫",
+      "hello": "Hello! How can I help you today? 🌟",
+      "hi": "Hi there! What can I do for you? ✨",
+      "شكرا": "عفوًا! دائماً سعيد بمساعدتك. 🤗",
+      "thank you": "You're welcome! Happy to help. ",
+      "ما اسمك": "أنا المساعد الذكي! يمكنك مناداتي بأي اسم تريده. 🤖",
+      "who are you": "I'm your AI assistant! Ready to help with anything. 💡",
+      "كيف حالك": "أنا بخير، شكراً لسؤالك! كيف يمكنني مساعدتك؟ 🌸",
+      "how are you": "I'm doing great! How can I assist you today? 🌼",
+    };
+
+    if (quickResponses.containsKey(lowerText)) {
+      return quickResponses[lowerText]!;
+    }
+
+    // تحليل النص لتقديم ردود أكثر ذكاء
+    if (lowerText.contains("درس") ||
+        lowerText.contains("مادة") ||
+        lowerText.contains("تعليم")) {
+      return "يمكنني مساعدتك في المواضيع التعليمية! 📚\nما المادة أو الموضوع الذي تريد المساعدة فيه؟";
+    }
+
+    if (lowerText.contains("رياضيات") || lowerText.contains("math")) {
+      return "الرياضيات رائعة! 🧮\nأخبرني بالسؤال الرياضي الذي تواجهه وسأحاول حله.";
+    }
+
+    if (lowerText.contains("علوم") || lowerText.contains("science")) {
+      return "العلم مثير للاهتمام! 🔬\nما هو الاستفسار العلمي الذي لديك؟";
+    }
+
+    if (lowerText.contains("برمجة") || lowerText.contains("programming")) {
+      return "البرمجة عالم رائع! 💻\nأي لغة برمجة أو مشكلة تواجهك؟";
+    }
+
+    // استخدام خدمة الذكاء الاصطناعي للردود المعقدة
+    try {
+      return await _sendToFreeAI(text);
+    } catch (e) {
+      return "أنا هنا لمساعدتك! 💫\nيمكنك سؤالي عن:\n• الدروس والمواد التعليمية\n• شرح المفاهيم\n• المساعدة في الواجبات\n• أي استفسار آخر";
+    }
+  }
+
+  void _sendMessage() async {
     if (_controller.text.isEmpty) return;
 
     final text = _controller.text.trim();
@@ -87,28 +179,26 @@ class _ChatPageState extends State<ChatPage> {
         "role": "user",
         "text": text,
         "time": DateTime.now(),
-        "status": "sent"
       });
       _isLoading = true;
     });
-    
+
     _controller.clear();
     _scrollToBottom();
 
-    // إرسال الرسالة إلى السيرفر
-    final reply = await sendMessage(text);
+    // الحصول على الرد من الذكاء الاصطناعي
+    final response = await _getAIResponse(text);
 
-    // إضافة الرد من الذكاء الاصطناعي
+    // إضافة الرد
     setState(() {
       _messages.add({
         "role": "ai",
-        "text": reply,
+        "text": response,
         "time": DateTime.now(),
-        "status": "delivered"
       });
       _isLoading = false;
     });
-    
+
     _scrollToBottom();
   }
 
@@ -122,11 +212,6 @@ class _ChatPageState extends State<ChatPage> {
         );
       }
     });
-  }
-
-  void _suggestTopic(String topic) {
-    _controller.text = topic;
-    _send();
   }
 
   void _clearChat() {
@@ -155,129 +240,74 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
-  void _copyMessage(String text) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text("تم نسخ الرسالة إلى الحافظة ✅"),
-        backgroundColor: Colors.green,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
-  // دالة مساعدة لتنسيق الوقت
   String _formatTime(DateTime date) {
     return '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
   }
 
-  Widget _buildMessageBubble(Map<String, dynamic> message, int index) {
+  Widget _buildMessageBubble(Map<String, dynamic> message) {
     final isUser = message["role"] == "user";
     final time = _formatTime(message["time"] ?? DateTime.now());
-    
+
     return Container(
-      margin: EdgeInsets.symmetric(vertical: 4, horizontal: 16),
+      margin: EdgeInsets.symmetric(vertical: 6, horizontal: 16),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment:
+            isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
         children: [
           if (!isUser) ...[
             CircleAvatar(
               radius: 16,
-              backgroundColor: Color(0xFF667eea).withOpacity(0.1),
-              child: Icon(Icons.smart_toy, size: 16, color: Color(0xFF667eea)),
+              backgroundColor: Color(0xFF667eea),
+              child: Icon(Icons.smart_toy, size: 16, color: Colors.white),
             ),
             SizedBox(width: 8),
           ],
           Flexible(
-            child: Container(
-              padding: EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: isUser ? Color(0xFF667eea) : Colors.grey[100],
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  topRight: Radius.circular(16),
-                  bottomLeft: isUser ? Radius.circular(16) : Radius.circular(4),
-                  bottomRight: isUser ? Radius.circular(4) : Radius.circular(16),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 4,
-                    offset: Offset(0, 2),
+            child: Column(
+              crossAxisAlignment:
+                  isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isUser ? Color(0xFF667eea) : Colors.grey[100],
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(16),
+                      topRight: Radius.circular(16),
+                      bottomLeft:
+                          isUser ? Radius.circular(16) : Radius.circular(4),
+                      bottomRight:
+                          isUser ? Radius.circular(4) : Radius.circular(16),
+                    ),
                   ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
+                  child: Text(
                     message["text"] ?? "",
                     style: TextStyle(
                       color: isUser ? Colors.white : Colors.black87,
                       fontSize: 14,
                     ),
                   ),
-                  SizedBox(height: 4),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        time,
-                        style: TextStyle(
-                          color: isUser ? Colors.white70 : Colors.grey[600],
-                          fontSize: 10,
-                        ),
-                      ),
-                      if (isUser) ...[
-                        SizedBox(width: 8),
-                        Icon(Icons.done_all, size: 12, color: Colors.white70),
-                      ],
-                    ],
+                ),
+                SizedBox(height: 4),
+                Text(
+                  time,
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontSize: 10,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
           if (isUser) ...[
             SizedBox(width: 8),
             CircleAvatar(
               radius: 16,
-              backgroundColor: Colors.blue.withOpacity(0.1),
-              child: Icon(Icons.person, color: Colors.blue, size: 16),
+              backgroundColor: Colors.blue,
+              child: Icon(Icons.person, color: Colors.white, size: 16),
             ),
           ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSuggestedTopics() {
-    return Container(
-      padding: EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            "موضوعات مقترحة",
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF667eea),
-            ),
-          ),
-          SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: _suggestedTopics.map((topic) {
-              return ActionChip(
-                avatar: Icon(Icons.lightbulb_outline, size: 16),
-                label: Text(topic["title"]!),
-                onPressed: () => _suggestTopic(topic["title"]!),
-                backgroundColor: Color(0xFF667eea).withOpacity(0.1),
-              );
-            }).toList(),
-          ),
         ],
       ),
     );
@@ -285,14 +315,14 @@ class _ChatPageState extends State<ChatPage> {
 
   Widget _buildTypingIndicator() {
     return Container(
-      margin: EdgeInsets.symmetric(vertical: 4, horizontal: 16),
+      margin: EdgeInsets.symmetric(vertical: 6, horizontal: 16),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           CircleAvatar(
             radius: 16,
-            backgroundColor: Color(0xFF667eea).withOpacity(0.1),
-            child: Icon(Icons.smart_toy, size: 16, color: Color(0xFF667eea)),
+            backgroundColor: Color(0xFF667eea),
+            child: Icon(Icons.smart_toy, size: 16, color: Colors.white),
           ),
           SizedBox(width: 8),
           Container(
@@ -306,11 +336,16 @@ class _ChatPageState extends State<ChatPage> {
               ),
             ),
             child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 SizedBox(
                   width: 20,
                   height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor:
+                        AlwaysStoppedAnimation<Color>(Color(0xFF667eea)),
+                  ),
                 ),
                 SizedBox(width: 8),
                 Text("جاري الكتابة...", style: TextStyle(color: Colors.grey)),
@@ -322,13 +357,42 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
+  Widget _buildQuickReplies() {
+    final quickReplies = [
+      "شرح درس الرياضيات",
+      "مساعدة في الواجب",
+      "ما هو الذكاء الاصطناعي؟",
+      "كيف أتعلم البرمجة؟",
+      "شرح درس العلوم",
+    ];
+
+    return Container(
+      padding: EdgeInsets.all(16),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: quickReplies.map((reply) {
+          return ActionChip(
+            label: Text(reply),
+            onPressed: () {
+              _controller.text = reply;
+              _sendMessage();
+            },
+            backgroundColor: Color(0xFF667eea).withOpacity(0.1),
+            labelStyle: TextStyle(color: Color(0xFF667eea)),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: Text(
-          "المساعد الذكي",
+          "المساعد الذكي المجاني",
           style: TextStyle(
             fontWeight: FontWeight.bold,
             color: Colors.white,
@@ -351,35 +415,25 @@ class _ChatPageState extends State<ChatPage> {
             onPressed: _clearChat,
             tooltip: "مسح المحادثة",
           ),
-          IconButton(
-            icon: Icon(Icons.info_outline, color: Colors.white),
-            onPressed: () {
-              _showHelpDialog();
-            },
-            tooltip: "مساعدة",
-          ),
         ],
       ),
       body: Column(
         children: [
-          // حالة الاتصال
+          // معلومات الخدمة
           Container(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            color: _isConnected ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
+            color: Color(0xFF667eea).withOpacity(0.1),
             child: Row(
-              mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  _isConnected ? Icons.wifi : Icons.wifi_off,
-                  size: 16,
-                  color: _isConnected ? Colors.green : Colors.orange,
-                ),
-                SizedBox(width: 4),
-                Text(
-                  _isConnected ? "متصل بالسيرفر" : "غير متصل",
-                  style: TextStyle(
-                    color: _isConnected ? Colors.green : Colors.orange,
-                    fontSize: 12,
+                Icon(Icons.info, size: 16, color: Color(0xFF667eea)),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    "دردشة ذكية مجانية - ${_aiServices[_currentServiceIndex]}",
+                    style: TextStyle(
+                      color: Color(0xFF667eea),
+                      fontSize: 12,
+                    ),
                   ),
                 ),
               ],
@@ -389,35 +443,34 @@ class _ChatPageState extends State<ChatPage> {
           Expanded(
             child: _messages.isEmpty
                 ? Center(
-                    child: SingleChildScrollView(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.smart_toy,
-                            size: 80,
-                            color: Colors.grey[300],
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.smart_toy,
+                          size: 80,
+                          color: Color(0xFF667eea),
+                        ),
+                        SizedBox(height: 20),
+                        Text(
+                          "مرحباً! أنا مساعدك الذكي المجاني",
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey[800],
                           ),
-                          SizedBox(height: 20),
-                          Text(
-                            "مرحباً! أنا مساعدك الذكي",
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey[600],
-                            ),
+                        ),
+                        SizedBox(height: 10),
+                        Text(
+                          "اسألني عن anything وسأحاول مساعدتك",
+                          style: TextStyle(
+                            color: Colors.grey[600],
                           ),
-                          SizedBox(height: 10),
-                          Text(
-                            "كيف يمكنني مساعدتك اليوم؟",
-                            style: TextStyle(
-                              color: Colors.grey[500],
-                            ),
-                          ),
-                          SizedBox(height: 30),
-                          _buildSuggestedTopics(),
-                        ],
-                      ),
+                          textAlign: TextAlign.center,
+                        ),
+                        SizedBox(height: 30),
+                        _buildQuickReplies(),
+                      ],
                     ),
                   )
                 : ListView.builder(
@@ -426,7 +479,7 @@ class _ChatPageState extends State<ChatPage> {
                     itemCount: _messages.length + (_isLoading ? 1 : 0),
                     itemBuilder: (context, index) {
                       if (index < _messages.length) {
-                        return _buildMessageBubble(_messages[index], index);
+                        return _buildMessageBubble(_messages[index]);
                       } else {
                         return _buildTypingIndicator();
                       }
@@ -439,56 +492,33 @@ class _ChatPageState extends State<ChatPage> {
             padding: EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black12,
-                  blurRadius: 10,
-                  offset: Offset(0, -2),
-                ),
-              ],
+              border: Border(top: BorderSide(color: Colors.grey[200]!)),
             ),
             child: Row(
               children: [
                 Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.grey[50],
-                      borderRadius: BorderRadius.circular(25),
-                      border: Border.all(color: Colors.grey[300]!),
+                  child: TextField(
+                    controller: _controller,
+                    maxLines: null,
+                    decoration: InputDecoration(
+                      hintText: "اكتب رسالتك هنا...",
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(25),
+                        borderSide: BorderSide(color: Colors.grey[300]!),
+                      ),
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _controller,
-                            maxLines: null,
-                            decoration: InputDecoration(
-                              hintText: "اكتب رسالتك هنا...",
-                              border: InputBorder.none,
-                              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                            ),
-                            onSubmitted: (_) => _send(),
-                          ),
-                        ),
-                        if (_controller.text.isNotEmpty)
-                          IconButton(
-                            icon: Icon(Icons.clear, size: 20),
-                            onPressed: () => _controller.clear(),
-                          ),
-                      ],
-                    ),
+                    onSubmitted: (_) => _sendMessage(),
                   ),
                 ),
                 SizedBox(width: 8),
-                Container(
-                  decoration: BoxDecoration(
-                    color: Color(0xFF667eea),
-                    shape: BoxShape.circle,
-                  ),
+                CircleAvatar(
+                  backgroundColor: _isLoading ? Colors.grey : Color(0xFF667eea),
                   child: IconButton(
                     icon: Icon(_isLoading ? Icons.hourglass_top : Icons.send),
                     color: Colors.white,
-                    onPressed: _isLoading ? null : _send,
+                    onPressed: _isLoading ? null : _sendMessage,
                   ),
                 ),
               ],
@@ -496,47 +526,6 @@ class _ChatPageState extends State<ChatPage> {
           ),
         ],
       ),
-    );
-  }
-
-  void _showHelpDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text("مساعدة المساعد الذكي"),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text("كيفية استخدام المساعد الذكي:"),
-              SizedBox(height: 10),
-              _buildHelpItem("• اسأل عن أي موضوع تعليمي"),
-              _buildHelpItem("• اطلب شرحاً للدروس"),
-              _buildHelpItem("• احصل على مساعدة في الواجبات"),
-              _buildHelpItem("• استفسر عن المفاهيم العلمية"),
-              SizedBox(height: 10),
-              Text("نصائح:", style: TextStyle(fontWeight: FontWeight.bold)),
-              _buildHelpItem("• كن محدداً في أسئلتك"),
-              _buildHelpItem("• استخدم الموضوعات المقترحة للبدء"),
-              _buildHelpItem("• تأكد من اتصال الشبكة"),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text("فهمت"),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHelpItem(String text) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 2),
-      child: Text(text, style: TextStyle(fontSize: 14)),
     );
   }
 

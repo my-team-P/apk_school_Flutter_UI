@@ -20,6 +20,7 @@ class _AddTeacherPageState extends State<AddTeacherPage> {
   File? _selectedImage;
   String _fullName = '';
   String _specialization = '';
+  String _password = ''; // ✅ تمت الإضافة
   String _phone = '';
   String _email = '';
   String _hireDate = '';
@@ -95,6 +96,8 @@ class _AddTeacherPageState extends State<AddTeacherPage> {
               SizedBox(height: 16),
               _buildEmailField(),
               SizedBox(height: 16),
+              _buildPasswordField(), // ✅ تمت الإضافة هنا
+              SizedBox(height: 16),
               _buildPhoneField(),
               SizedBox(height: 16),
               _buildHireDateField(),
@@ -108,6 +111,34 @@ class _AddTeacherPageState extends State<AddTeacherPage> {
           ),
         ),
       ),
+    );
+  }
+
+  // ✅ حقل كلمة المرور الجديد
+  Widget _buildPasswordField() {
+    return TextFormField(
+      decoration: InputDecoration(
+        labelText: 'كلمة المرور *',
+        prefixIcon: Icon(Icons.lock, color: Colors.blue[700]),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.blue[700]!),
+        ),
+        filled: true,
+        fillColor: Colors.white,
+      ),
+      obscureText: true,
+      onSaved: (value) => _password = value ?? '',
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'يرجى إدخال كلمة المرور';
+        }
+        if (value.length < 6) {
+          return 'كلمة المرور يجب أن تكون على الأقل 6 أحرف';
+        }
+        return null;
+      },
     );
   }
 
@@ -158,23 +189,13 @@ class _AddTeacherPageState extends State<AddTeacherPage> {
       decoration: InputDecoration(
         labelText: 'الاسم الكامل *',
         prefixIcon: Icon(Icons.person, color: Colors.blue[700]),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.blue[700]!),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         filled: true,
         fillColor: Colors.white,
       ),
       onSaved: (value) => _fullName = value!,
-      validator: (value) {
-        if (value == null || value.isEmpty) {
-          return 'يرجى إدخال الاسم الكامل';
-        }
-        return null;
-      },
+      validator: (value) =>
+          value == null || value.isEmpty ? 'يرجى إدخال الاسم الكامل' : null,
     );
   }
 
@@ -183,29 +204,17 @@ class _AddTeacherPageState extends State<AddTeacherPage> {
       decoration: InputDecoration(
         labelText: 'التخصص *',
         prefixIcon: Icon(Icons.school, color: Colors.blue[700]),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.blue[700]!),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         filled: true,
         fillColor: Colors.white,
       ),
-      items: _specializations.map((String value) {
-        return DropdownMenuItem<String>(
-          value: value,
-          child: Text(value),
-        );
-      }).toList(),
+      items: _specializations
+          .map((String value) =>
+              DropdownMenuItem<String>(value: value, child: Text(value)))
+          .toList(),
       onChanged: (value) => setState(() => _specialization = value!),
-      validator: (value) {
-        if (value == null || value.isEmpty) {
-          return 'يرجى اختيار التخصص';
-        }
-        return null;
-      },
+      validator: (value) =>
+          value == null || value.isEmpty ? 'يرجى اختيار التخصص' : null,
     );
   }
 
@@ -214,22 +223,14 @@ class _AddTeacherPageState extends State<AddTeacherPage> {
       decoration: InputDecoration(
         labelText: 'المؤهل العلمي',
         prefixIcon: Icon(Icons.workspace_premium, color: Colors.blue[700]),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.blue[700]!),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         filled: true,
         fillColor: Colors.white,
       ),
-      items: _qualifications.map((String value) {
-        return DropdownMenuItem<String>(
-          value: value,
-          child: Text(value),
-        );
-      }).toList(),
+      items: _qualifications
+          .map((String value) =>
+              DropdownMenuItem<String>(value: value, child: Text(value)))
+          .toList(),
       onChanged: (value) => setState(() => _qualification = value!),
     );
   }
@@ -237,22 +238,19 @@ class _AddTeacherPageState extends State<AddTeacherPage> {
   Widget _buildEmailField() {
     return TextFormField(
       decoration: InputDecoration(
-        labelText: 'البريد الإلكتروني (اختياري)',
+        labelText: 'البريد الإلكتروني *',
         prefixIcon: Icon(Icons.email, color: Colors.blue[700]),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.blue[700]!),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         filled: true,
         fillColor: Colors.white,
       ),
       keyboardType: TextInputType.emailAddress,
       onSaved: (value) => _email = value ?? '',
       validator: (value) {
-        if (value != null && value.isNotEmpty && !value.contains('@')) {
+        if (value == null || value.isEmpty) {
+          return 'يرجى إدخال البريد الإلكتروني';
+        }
+        if (!value.contains('@')) {
           return 'يرجى إدخال بريد إلكتروني صحيح';
         }
         return null;
@@ -265,13 +263,7 @@ class _AddTeacherPageState extends State<AddTeacherPage> {
       decoration: InputDecoration(
         labelText: 'رقم الهاتف (اختياري)',
         prefixIcon: Icon(Icons.phone, color: Colors.blue[700]),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.blue[700]!),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         filled: true,
         fillColor: Colors.white,
       ),
@@ -285,13 +277,7 @@ class _AddTeacherPageState extends State<AddTeacherPage> {
       decoration: InputDecoration(
         labelText: 'تاريخ التعيين (اختياري)',
         prefixIcon: Icon(Icons.calendar_today, color: Colors.blue[700]),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.blue[700]!),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         filled: true,
         fillColor: Colors.white,
       ),
@@ -306,13 +292,7 @@ class _AddTeacherPageState extends State<AddTeacherPage> {
       decoration: InputDecoration(
         labelText: 'الراتب (اختياري)',
         prefixIcon: Icon(Icons.attach_money, color: Colors.blue[700]),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.blue[700]!),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         filled: true,
         fillColor: Colors.white,
       ),
@@ -331,10 +311,8 @@ class _AddTeacherPageState extends State<AddTeacherPage> {
           children: [
             Icon(Icons.check_circle, color: Colors.blue[700]),
             SizedBox(width: 12),
-            Text(
-              'المعلم نشط',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-            ),
+            Text('المعلم نشط',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
             Spacer(),
             Switch(
               value: _isActive,
@@ -355,35 +333,18 @@ class _AddTeacherPageState extends State<AddTeacherPage> {
         onPressed: _submitForm,
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.blue[700],
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          elevation: 2,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
-        child: Text(
-          'حفظ بيانات المعلم',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
+        child: Text('حفظ بيانات المعلم',
+            style: TextStyle(fontSize: 18, color: Colors.white)),
       ),
     );
   }
 
   Future<void> _pickImage() async {
-    try {
-      final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-      if (image != null) {
-        setState(() {
-          _selectedImage = File(image.path);
-        });
-      }
-    } catch (e) {
-      print('Error picking image: $e');
-      _showErrorDialog('خطأ في اختيار الصورة: $e');
-    }
+    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+    if (image != null) setState(() => _selectedImage = File(image.path));
   }
 
   Future<void> _selectDate() async {
@@ -405,36 +366,29 @@ class _AddTeacherPageState extends State<AddTeacherPage> {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
 
-      // التحقق من الحقول الإلزامية الإضافية
-      if (_specialization.isEmpty) {
-        _showErrorDialog('يرجى اختيار التخصص');
-        return;
-      }
-
       _showLoadingDialog();
 
       try {
         Map<String, dynamic> teacherData = {
           'full_name': _fullName,
           'specialization': _specialization,
+          'password': _password, // ✅ تمت الإضافة هنا
           'phone': _phone.isEmpty ? null : _phone,
-          'email': _email.isEmpty ? null : _email,
+          'email': _email,
           'hire_date': _hireDate.isEmpty ? null : _hireDate,
           'salary': _salary.isEmpty ? null : _salary,
           'qualification': _qualification.isEmpty ? null : _qualification,
-          'is_active': _isActive ? 1 : 0, // ← هذا مهم
+          'is_active': _isActive ? 1 : 0,
         };
 
         bool success =
             await _teacherService.addTeacher(teacherData, _selectedImage);
 
-        Navigator.pop(context); // إغلاق مؤشر التحميل
+        Navigator.pop(context);
 
-        if (success) {
-          _showSuccessDialog();
-        } else {
-          _showErrorDialog('فشل في إضافة المعلم. يرجى المحاولة مرة أخرى.');
-        }
+        success
+            ? _showSuccessDialog()
+            : _showErrorDialog('فشل في إضافة المعلم. يرجى المحاولة مرة أخرى.');
       } catch (e) {
         Navigator.pop(context);
         _showErrorDialog('حدث خطأ: $e');
@@ -442,69 +396,63 @@ class _AddTeacherPageState extends State<AddTeacherPage> {
     }
   }
 
-  void _showLoadingDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => Dialog(
-        child: Padding(
-          padding: EdgeInsets.all(20),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
+  void _showLoadingDialog() => showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => Dialog(
+          child: Padding(
+            padding: EdgeInsets.all(20),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(color: Colors.blue[700]),
+                SizedBox(width: 20),
+                Text('جاري حفظ البيانات...'),
+              ],
+            ),
+          ),
+        ),
+      );
+
+  void _showSuccessDialog() => showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Row(
             children: [
-              CircularProgressIndicator(color: Colors.blue[700]),
-              SizedBox(width: 20),
-              Text('جاري حفظ البيانات...'),
+              Icon(Icons.check_circle, color: Colors.green),
+              SizedBox(width: 8),
+              Text('تمت العملية', style: TextStyle(color: Colors.green)),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  void _showSuccessDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.check_circle, color: Colors.green),
-            SizedBox(width: 8),
-            Text('تمت العملية', style: TextStyle(color: Colors.green)),
+          content: Text('تم إضافة المعلم بنجاح'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.popUntil(context, (route) => route.isFirst);
+              },
+              child: Text('موافق', style: TextStyle(color: Colors.blue[700])),
+            ),
           ],
         ),
-        content: Text('تم إضافة المعلم بنجاح'),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.popUntil(context, (route) => route.isFirst);
-            },
-            child: Text('موافق', style: TextStyle(color: Colors.blue[700])),
-          ),
-        ],
-      ),
-    );
-  }
+      );
 
-  void _showErrorDialog(String message) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.error, color: Colors.red),
-            SizedBox(width: 8),
-            Text('خطأ', style: TextStyle(color: Colors.red)),
+  void _showErrorDialog(String message) => showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.error, color: Colors.red),
+              SizedBox(width: 8),
+              Text('خطأ', style: TextStyle(color: Colors.red)),
+            ],
+          ),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('موافق', style: TextStyle(color: Colors.blue[700])),
+            ),
           ],
         ),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('موافق', style: TextStyle(color: Colors.blue[700])),
-          ),
-        ],
-      ),
-    );
-  }
+      );
 }

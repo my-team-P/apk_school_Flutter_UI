@@ -6,7 +6,7 @@ import 'dart:convert';
 class TeacherService {
   // روابط الـ API - اختر المناسب حسب جهازك
   static const String baseUrl =
-      'http://192.168.1.102:8000/api'; // لـ Android Emulator
+      'http://192.168.1.102:8000/api/teachers'; // لـ Android Emulator
   // static const String baseUrl = 'http://localhost:8000/api'; // لـ iOS Simulator
   // static const String baseUrl = 'http://192.168.1.100:8000/api'; // لـ جهاز حقيقي - استبدل 192.168.1.100 بـ IP خادمك
 
@@ -16,8 +16,7 @@ class TeacherService {
       print('📊 البيانات: $teacherData');
 
       // إنشاء طلب multipart لإرسال النص والصور
-      var request =
-          http.MultipartRequest('POST', Uri.parse('$baseUrl/teachers'));
+      var request = http.MultipartRequest('POST', Uri.parse(baseUrl));
 
       // إضافة رؤوس الطلب (اختياري)
       request.headers['Accept'] = 'application/json';
@@ -36,7 +35,7 @@ class TeacherService {
         print('🖼️ جاري إضافة الصورة: ${image.path}');
         try {
           var multipartFile = await http.MultipartFile.fromPath(
-            'photo', // يجب أن يتطابق مع اسم الحقل في Laravel
+            'photo_url', // يجب أن يتطابق مع اسم الحقل في Laravel
             image.path,
             filename: 'teacher_${DateTime.now().millisecondsSinceEpoch}.jpg',
           );
@@ -49,7 +48,7 @@ class TeacherService {
         print('ℹ️ لا توجد صورة مرفوعة');
       }
 
-      print('🔄 جاري إرسال الطلب إلى: $baseUrl/teachers');
+      print('🔄 جاري إرسال الطلب إلى: $baseUrl');
 
       // إرسال الطلب وانتظار الرد
       var response = await request.send();
@@ -122,14 +121,29 @@ class TeacherService {
     }
   }
 
-  // دالة لحذف معلم (للتوسع المستقبلي)
-  Future<bool> deleteTeacher(int teacherId) async {
+  // دالة تسجيل دخول المعلم
+  Future<bool> loginTeacher(
+      String fullName, String email, String password) async {
     try {
-      var response =
-          await http.delete(Uri.parse('$baseUrl/teachers/$teacherId'));
-      return response.statusCode == 200;
+      final response = await http.post(
+        Uri.parse('$baseUrl/login'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'full_name': fullName,
+          'email': email,
+          'password': password,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['success'] == true;
+      } else {
+        print('❌ خطأ في تسجيل الدخول: ${response.statusCode}');
+        return false;
+      }
     } catch (e) {
-      print('❌ استثناء في حذف المعلم: $e');
+      print('❌ استثناء أثناء تسجيل الدخول: $e');
       return false;
     }
   }

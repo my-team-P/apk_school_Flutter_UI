@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:admin/login.blade.dart';
 import 'package:admin/screens/main/components/My_prof.blade.dart';
 import 'package:admin/sid/library.blade.dart';
 import 'package:admin/sid/notification.blade.dart';
@@ -16,6 +15,7 @@ import 'package:admin/sid/exam.dart';
 import 'package:admin/RegisterPage.dart';
 import 'package:admin/degree.dart';
 import 'package:admin/show/deg.dart';
+import 'package:admin/first_screen.dart';
 
 class SideMenu extends StatelessWidget {
   const SideMenu({
@@ -233,7 +233,7 @@ class SideMenu extends StatelessWidget {
                       Navigator.pushReplacement(
                         context,
                         MaterialPageRoute(
-                            builder: (context) => const LoginApp()),
+                            builder: (context) => const UserTypeSelectionApp()),
                       );
                     },
                   ),

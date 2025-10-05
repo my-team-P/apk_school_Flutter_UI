@@ -58,7 +58,8 @@ class MainScreen extends StatelessWidget {
                     // محتوى Dashboard يملأ المساحة المتبقية
                     Expanded(
                       child: Container(
-                        color: Color(0xFFF6E6CC), // اللون الأساسي من الشعار
+                        color: Color.fromARGB(
+                            255, 255, 255, 255), // اللون الأساسي من الشعار
 
                         child: const DashboardScreen(),
                       ),

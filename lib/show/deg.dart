@@ -283,7 +283,7 @@ class _ViewGradesPageState extends State<ViewGradesPage> {
                     value: studentId,
                     child: Text(studentName),
                   );
-                }).toList(),
+                }),
               ],
               onChanged: (v) {
                 setState(() {

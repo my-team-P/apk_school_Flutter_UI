@@ -1,6 +1,8 @@
-import 'package:admin/screens/main/main_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'package:intl/intl.dart';
+import 'package:admin/screens/main/main_screen.dart';
 
 class StudentPreparationPage extends StatefulWidget {
   const StudentPreparationPage({super.key});
@@ -10,321 +12,515 @@ class StudentPreparationPage extends StatefulWidget {
 }
 
 class _StudentPreparationPageState extends State<StudentPreparationPage> {
-  final List<Map<String, dynamic>> _students = [
-    {
-      "id": "1",
-      "first": "أحمد",
-      "second": "محمد",
-      "third": "علي",
-      "fourth": "صالح",
-      "class": "1",
-      "section": "أ",
-      "subject": "رياضيات",
-      "phone": "0512345678",
-      "email": "ahmed@school.com"
-    },
-    {
-      "id": "2",
-      "first": "ليلى",
-      "second": "عبدالله",
-      "third": "أحمد",
-      "fourth": "خالد",
-      "class": "1",
-      "section": "ب",
-      "subject": "علوم",
-      "phone": "0512345679",
-      "email": "layla@school.com"
-    },
-    {
-      "id": "3",
-      "first": "سارة",
-      "second": "خالد",
-      "third": "أحمد",
-      "fourth": "علي",
-      "class": "2",
-      "section": "أ",
-      "subject": "لغة عربية",
-      "phone": "0512345680",
-      "email": "sara@school.com"
-    },
-    {
-      "id": "4",
-      "first": "محمد",
-      "second": "علي",
-      "third": "حسن",
-      "fourth": "إبراهيم",
-      "class": "2",
-      "section": "ب",
-      "subject": "رياضيات",
-      "phone": "0512345681",
-      "email": "mohammed@school.com"
-    },
-    {
-      "id": "5",
-      "first": "فاطمة",
-      "second": "عمر",
-      "third": "سعيد",
-      "fourth": "عبدالرحمن",
-      "class": "3",
-      "section": "أ",
-      "subject": "علوم",
-      "phone": "0512345682",
-      "email": "fatima@school.com"
-    },
-  ];
+  List<dynamic> _students = [];
+  List<dynamic> _classes = [];
+  List<dynamic> _sections = [];
+  List<dynamic> _filteredStudents = [];
 
-  final Map<String, String> classNames = {
-    "1": "الصف الأول",
-    "2": "الصف الثاني",
-    "3": "الصف الثالث",
-    "4": "الصف الرابع",
-    "5": "الصف الخامس",
-    "6": "الصف السادس",
-  };
+  int? _selectedClassId;
+  int? _selectedSectionId;
 
-  final Map<String, Map<String, String>> _attendanceRecords = {};
-  final Map<String, String> _notes = {};
-  final Map<String, String> _grades = {};
+  bool _isLoading = true;
+  bool _isSaving = false;
+  String? _errorMessage;
 
-  String? selectedSubject;
-  String? selectedClass;
-  String? selectedSection;
-  String searchQuery = '';
-  final TextEditingController _searchController = TextEditingController();
+  final String _baseUrl = 'http://192.168.1.102:8000/api';
+  DateTime _selectedDate = DateTime.now();
 
-  // إحصائيات الحضور
-  Map<String, int> get attendanceStats {
-    final filtered = _getFilteredStudents();
-    int present = 0;
-    int absent = 0;
-    int notSet = 0;
+  // تخزين بيانات الحضور والسلوك لكل طالب
+  final Map<int, String> _attendanceStatus = {};
+  final Map<int, String> _behaviorStatus = {};
+  final Map<int, String> _notes = {};
 
-    for (final student in filtered) {
-      final status = _attendanceRecords[student['id']]?['status'];
-      if (status == 'حاضر') {
-        present++;
-      } else if (status == 'غائب') {
-        absent++;
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      await _loadClasses();
+      await _loadSections();
+      await _loadStudents();
+    } catch (e) {
+      setState(() => _errorMessage = 'خطأ في تحميل البيانات: $e');
+      print('❌ خطأ عام في تحميل البيانات: $e');
+      _loadSampleData();
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _loadClasses() async {
+    try {
+      final response = await http.get(Uri.parse("$_baseUrl/classes"));
+      print('📡 استجابة الصفوف: ${response.statusCode}');
+      print('📄 محتوى الصفوف: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(utf8.decode(response.bodyBytes));
+        print('🔍 هيكل بيانات الصفوف: ${data.runtimeType}');
+
+        // معالجة هيكل البيانات المختلف
+        if (data is Map<String, dynamic>) {
+          if (data.containsKey('data') && data['data'] is List) {
+            _classes = data['data'];
+          } else if (data.containsKey('classes') && data['classes'] is List) {
+            _classes = data['classes'];
+          } else {
+            // إذا كان الـ Map نفسه يحتوي على بيانات الصفوف
+            _classes = [data];
+          }
+        } else if (data is List) {
+          _classes = data;
+        } else {
+          _classes = [];
+        }
+
+        print('✅ تم تحميل ${_classes.length} صف');
+        print('📋 قائمة الصفوف: $_classes');
       } else {
-        notSet++;
+        print('❌ خطأ في تحميل الصفوف: ${response.statusCode}');
+        _classes = [];
       }
+    } catch (e) {
+      print('❌ استثناء في تحميل الصفوف: $e');
+      _classes = [];
+    }
+  }
+
+  Future<void> _loadSections() async {
+    try {
+      final response = await http.get(Uri.parse("$_baseUrl/sections"));
+      print('📡 استجابة الشعب: ${response.statusCode}');
+      print('📄 محتوى الشعب: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(utf8.decode(response.bodyBytes));
+        print('🔍 هيكل بيانات الشعب: ${data.runtimeType}');
+
+        // معالجة هيكل البيانات المختلف
+        if (data is Map<String, dynamic>) {
+          if (data.containsKey('data') && data['data'] is List) {
+            _sections = data['data'];
+          } else if (data.containsKey('sections') && data['sections'] is List) {
+            _sections = data['sections'];
+          } else {
+            _sections = [];
+          }
+        } else if (data is List) {
+          _sections = data;
+        } else {
+          _sections = [];
+        }
+
+        print('✅ تم تحميل ${_sections.length} شعبة');
+        print('📋 قائمة الشعب: $_sections');
+      } else {
+        print('❌ خطأ في تحميل الشعب: ${response.statusCode}');
+        _sections = [];
+      }
+    } catch (e) {
+      print('❌ استثناء في تحميل الشعب: $e');
+      _sections = [];
+    }
+  }
+
+  Future<void> _loadStudents() async {
+    try {
+      final response = await http.get(Uri.parse("$_baseUrl/students"));
+      print('📡 استجابة الطلاب: ${response.statusCode}');
+      print('📄 محتوى الطلاب: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(utf8.decode(response.bodyBytes));
+        print('🔍 هيكل بيانات الطلاب: ${data.runtimeType}');
+
+        // معالجة هيكل البيانات المختلف
+        if (data is Map<String, dynamic>) {
+          if (data.containsKey('data') && data['data'] is List) {
+            _students = data['data'];
+          } else if (data.containsKey('students') && data['students'] is List) {
+            _students = data['students'];
+          } else {
+            _students = [];
+          }
+        } else if (data is List) {
+          _students = data;
+        } else {
+          _students = [];
+        }
+
+        _filteredStudents = _students;
+
+        // تهيئة القيم الافتراضية لكل طالب
+        for (var student in _students) {
+          int studentId = _getStudentId(student);
+          _attendanceStatus[studentId] = 'حاضر';
+          _behaviorStatus[studentId] = 'منتظم';
+          _notes[studentId] = '';
+        }
+        print('✅ تم تحميل ${_students.length} طالب');
+      } else {
+        print('❌ خطأ في تحميل الطلاب: ${response.statusCode}');
+        _loadSampleData();
+      }
+    } catch (e) {
+      print('❌ استثناء في تحميل الطلاب: $e');
+      _loadSampleData();
+    }
+  }
+
+  int _getStudentId(dynamic student) {
+    try {
+      if (student is Map) {
+        if (student['id'] is int) return student['id'];
+        if (student['id'] is String) return int.tryParse(student['id']) ?? 0;
+        if (student['student_id'] is int) return student['student_id'];
+        if (student['student_id'] is String) {
+          return int.tryParse(student['student_id']) ?? 0;
+        }
+      }
+      return 0;
+    } catch (e) {
+      print('❌ خطأ في استخراج ID الطالب: $e');
+      return 0;
+    }
+  }
+
+  String _getStudentName(dynamic student) {
+    try {
+      if (student is Map) {
+        return student['name'] ??
+            student['student_name'] ??
+            student['full_name'] ??
+            'غير معروف';
+      }
+      return 'غير معروف';
+    } catch (e) {
+      return 'غير معروف';
+    }
+  }
+
+  int? _getStudentClassId(dynamic student) {
+    try {
+      if (student is Map) {
+        if (student['class_id'] is int) return student['class_id'];
+        if (student['class_id'] is String) {
+          return int.tryParse(student['class_id']);
+        }
+        if (student['grade_id'] is int) return student['grade_id'];
+        if (student['grade_id'] is String) {
+          return int.tryParse(student['grade_id']);
+        }
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  int? _getStudentSectionId(dynamic student) {
+    try {
+      if (student is Map) {
+        if (student['section_id'] is int) return student['section_id'];
+        if (student['section_id'] is String) {
+          return int.tryParse(student['section_id']);
+        }
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  void _loadSampleData() {
+    print('🔄 تحميل بيانات تجريبية...');
+
+    _classes = [
+      {'id': 1, 'class_name': 'الصف الأول', 'grade_name': 'الصف الأول'},
+      {'id': 2, 'class_name': 'الصف الثاني', 'grade_name': 'الصف الثاني'},
+    ];
+    _sections = [
+      {'id': 1, 'section_name': 'أ', 'class_id': 1},
+      {'id': 2, 'section_name': 'ب', 'class_id': 1},
+      {'id': 3, 'section_name': 'أ', 'class_id': 2},
+    ];
+    _students = [
+      {'id': 1, 'name': 'أحمد محمد', 'class_id': 1, 'section_id': 1},
+      {'id': 2, 'name': 'ليلى عبدالله', 'class_id': 1, 'section_id': 1},
+      {'id': 3, 'name': 'سارة خالد', 'class_id': 1, 'section_id': 1},
+      {'id': 4, 'name': 'محمد علي', 'class_id': 1, 'section_id': 2},
+      {'id': 5, 'name': 'فاطمة إبراهيم', 'class_id': 2, 'section_id': 3},
+    ];
+    _filteredStudents = _students;
+
+    // تهيئة القيم الافتراضية للبيانات التجريبية
+    for (var student in _students) {
+      int studentId = student['id'];
+      _attendanceStatus[studentId] = 'حاضر';
+      _behaviorStatus[studentId] = 'منتظم';
+      _notes[studentId] = '';
     }
 
-    return {
-      'total': filtered.length,
-      'present': present,
-      'absent': absent,
-      'notSet': notSet,
-    };
+    _errorMessage = 'تم تحميل بيانات تجريبية للاختبار';
+    print('✅ تم تحميل بيانات تجريبية: ${_students.length} طالب');
   }
 
-  List<Map<String, dynamic>> _getFilteredStudents() {
-    return _students.where((student) {
-      final matchesSubject =
-          selectedSubject == null || student['subject'] == selectedSubject;
+  void _filterStudents() {
+    _filteredStudents = _students.where((student) {
+      final studentClassId = _getStudentClassId(student);
+      final studentSectionId = _getStudentSectionId(student);
+
       final matchesClass =
-          selectedClass == null || student['class'] == selectedClass;
+          _selectedClassId == null || studentClassId == _selectedClassId;
       final matchesSection =
-          selectedSection == null || student['section'] == selectedSection;
-      final matchesSearch = searchQuery.isEmpty ||
-          '${student['first']} ${student['second']} ${student['third']} ${student['fourth']}'
-              .toLowerCase()
-              .contains(searchQuery.toLowerCase());
+          _selectedSectionId == null || studentSectionId == _selectedSectionId;
 
-      return matchesSubject && matchesClass && matchesSection && matchesSearch;
+      return matchesClass && matchesSection;
     }).toList();
+
+    print('🔍 تم تصفية الطلاب: ${_filteredStudents.length} طالب');
   }
 
-  void _savePreparation() {
-    final filteredStudents = _getFilteredStudents();
-    final stats = attendanceStats;
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+    );
+    if (picked != null) setState(() => _selectedDate = picked);
+  }
 
-    if (stats['notSet']! > 0) {
-      _showConfirmationDialog(filteredStudents);
+  Future<void> _saveAllAttendance() async {
+    if (_filteredStudents.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('لا يوجد طلاب لحفظ بياناتهم')),
+      );
       return;
     }
 
-    _performSave(filteredStudents);
-  }
+    setState(() => _isSaving = true);
 
-  void _performSave(List<Map<String, dynamic>> students) {
-    final now = DateTime.now();
-    final date = DateFormat("yyyy-MM-dd HH:mm").format(now);
+    try {
+      int successCount = 0;
+      int errorCount = 0;
 
-    for (final student in students) {
-      final status = _attendanceRecords[student['id']]?['status'] ?? 'غير محدد';
-      final note = _notes[student['id']] ?? '';
-      final grade = _grades[student['id']] ?? '';
+      for (var student in _filteredStudents) {
+        final int studentId = _getStudentId(student);
 
-      print('''
-=== سجل التحضير ===
-الطالب: ${student['first']} ${student['second']} ${student['third']} ${student['fourth']}
-الصف: ${classNames[student['class']]} - الشعبة: ${student['section']}
-المادة: ${student['subject']}
-الحضور: $status
-التقييم: $grade
-ملاحظات: $note
-التاريخ: $date
-==================
-''');
+        final payload = {
+          'student_id': studentId,
+          'date': DateFormat("yyyy-MM-dd").format(_selectedDate),
+          'status': _attendanceStatus[studentId] ?? 'حاضر',
+          'behavior': _behaviorStatus[studentId] ?? 'منتظم',
+          'notes': _notes[studentId] ?? '',
+        };
+
+        print('📤 إرسال بيانات الطالب $studentId: $payload');
+
+        try {
+          final response = await http.post(
+            Uri.parse("$_baseUrl/attendance"),
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: json.encode(payload),
+          );
+
+          print('📥 استجابة السيرفر للطالب $studentId: ${response.statusCode}');
+
+          if (response.statusCode == 200 || response.statusCode == 201) {
+            successCount++;
+          } else {
+            errorCount++;
+            final errorBody = json.decode(response.body);
+            print('❌ فشل في حفظ بيانات الطالب $studentId: $errorBody');
+          }
+        } catch (e) {
+          errorCount++;
+          print('❌ استثناء في حفظ بيانات الطالب $studentId: $e');
+        }
+
+        // تأخير بسيط بين الطلبات لتجنب إرباك السيرفر
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('تم حفظ $successCount طالب ✅ | فشل $errorCount'),
+          backgroundColor: errorCount == 0 ? Colors.green : Colors.orange,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('خطأ في الحفظ: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() => _isSaving = false);
     }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text("تم حفظ تحضير ${students.length} طالب بنجاح ✅"),
-        backgroundColor: Colors.green,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
   }
 
-  void _showConfirmationDialog(List<Map<String, dynamic>> students) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text("تأكيد الحفظ"),
-        content: Text(
-            "هناك ${attendanceStats['notSet']} طالب لم يتم تحديد حضورهم. هل تريد المتابعة؟"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text("إلغاء"),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _performSave(students);
-            },
-            child: Text("متابعة", style: TextStyle(color: Colors.orange)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _performSave(students);
-            },
-            child: Text("حفظ"),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showStudentDetails(Map<String, dynamic> student) {
-    showModalBottomSheet(
-      context: context,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => Container(
-        padding: EdgeInsets.all(20),
+  Widget _buildStudentTable() {
+    if (_filteredStudents.isEmpty) {
+      return const Center(
         child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            SizedBox(height: 20),
+            Icon(Icons.group_off, size: 64, color: Colors.grey),
+            SizedBox(height: 16),
             Text(
-              "معلومات الطالب",
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              'لا يوجد طلاب في هذا الصف والشعبة',
+              style: TextStyle(fontSize: 16, color: Colors.grey),
             ),
-            SizedBox(height: 15),
-            _buildDetailRow("الاسم الكامل",
-                "${student['first']} ${student['second']} ${student['third']} ${student['fourth']}"),
-            _buildDetailRow("الصف",
-                "${classNames[student['class']]} - الشعبة ${student['section']}"),
-            _buildDetailRow("المادة", student['subject']),
-            _buildDetailRow("الهاتف", student['phone']),
-            _buildDetailRow("البريد الإلكتروني", student['email']),
-            SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      // إرسال رسالة للطالب
-                    },
-                    child: Text("إرسال رسالة"),
-                  ),
-                ),
-                SizedBox(width: 10),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      // الاتصال بالطالب
-                    },
-                    child: Text("الاتصال"),
-                  ),
-                ),
-              ],
+            Text(
+              'يرجى اختيار صف وشعبة مختلفة',
+              style: TextStyle(fontSize: 14, color: Colors.grey),
             ),
           ],
         ),
+      );
+    }
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.vertical,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: DataTable(
+          columnSpacing: 20,
+          headingRowColor: WidgetStateProperty.all(Colors.blue[50]),
+          columns: const [
+            DataColumn(label: Text('م', textAlign: TextAlign.center)),
+            DataColumn(label: Text('اسم الطالب', textAlign: TextAlign.center)),
+            DataColumn(label: Text('الحضور', textAlign: TextAlign.center)),
+            DataColumn(label: Text('السلوك', textAlign: TextAlign.center)),
+            DataColumn(label: Text('ملاحظات', textAlign: TextAlign.center)),
+          ],
+          rows: _filteredStudents.asMap().entries.map((entry) {
+            final index = entry.key;
+            final student = entry.value;
+            final int studentId = _getStudentId(student);
+
+            return DataRow(
+              cells: [
+                DataCell(Center(child: Text('${index + 1}'))),
+                DataCell(Center(
+                  child: Text(
+                    _getStudentName(student),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                )),
+                DataCell(
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: DropdownButton<String>(
+                        value: _attendanceStatus[studentId] ?? 'حاضر',
+                        items: ['حاضر', 'غائب', 'متأخر']
+                            .map((status) => DropdownMenuItem(
+                                  value: status,
+                                  child: Text(
+                                    status,
+                                    style: TextStyle(
+                                      color: status == 'غائب'
+                                          ? Colors.red
+                                          : status == 'متأخر'
+                                              ? Colors.orange
+                                              : Colors.green,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ))
+                            .toList(),
+                        onChanged: (newValue) {
+                          setState(() {
+                            _attendanceStatus[studentId] = newValue!;
+                          });
+                        },
+                        underline: Container(),
+                        isExpanded: true,
+                      ),
+                    ),
+                  ),
+                ),
+                DataCell(
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: DropdownButton<String>(
+                        value: _behaviorStatus[studentId] ?? 'منتظم',
+                        items: ['منتظم', 'مشاغب', 'هادئ', 'نشيط']
+                            .map((behavior) => DropdownMenuItem(
+                                  value: behavior,
+                                  child: Text(
+                                    behavior,
+                                    style: TextStyle(
+                                      color: behavior == 'مشاغب'
+                                          ? Colors.red
+                                          : behavior == 'نشيط'
+                                              ? Colors.green
+                                              : Colors.blue,
+                                    ),
+                                  ),
+                                ))
+                            .toList(),
+                        onChanged: (newValue) {
+                          setState(() {
+                            _behaviorStatus[studentId] = newValue!;
+                          });
+                        },
+                        underline: Container(),
+                        isExpanded: true,
+                      ),
+                    ),
+                  ),
+                ),
+                DataCell(
+                  SizedBox(
+                    width: 150,
+                    child: TextFormField(
+                      initialValue: _notes[studentId] ?? '',
+                      decoration: const InputDecoration(
+                        hintText: 'ملاحظات...',
+                        border: OutlineInputBorder(),
+                        contentPadding:
+                            EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      ),
+                      maxLines: 2,
+                      onChanged: (value) {
+                        _notes[studentId] = value;
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            );
+          }).toList(),
+        ),
       ),
-    );
-  }
-
-  Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Text(
-            "$label: ",
-            style:
-                TextStyle(fontWeight: FontWeight.bold, color: Colors.grey[600]),
-          ),
-          Expanded(child: Text(value)),
-        ],
-      ),
-    );
-  }
-
-  void _markAllAsPresent() {
-    final filteredStudents = _getFilteredStudents();
-    setState(() {
-      for (final student in filteredStudents) {
-        _attendanceRecords[student['id']] = {
-          'status': 'حاضر',
-          'time': DateFormat("HH:mm").format(DateTime.now()),
-        };
-      }
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("تم تسجيل حضور جميع الطلاب")),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final filteredStudents = _getFilteredStudents();
-    final stats = attendanceStats;
-    final today = DateFormat("yyyy-MM-dd").format(DateTime.now());
-
     return Scaffold(
-      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: Text(
-          "نظام التحضير",
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-            fontSize: 20,
-          ),
-        ),
-        backgroundColor: Color(0xFF667eea),
-        elevation: 0,
+        title: const Text('تسجيل حضور وسلوك الطلاب'),
+        backgroundColor: Colors.blue[700],
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.white),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
             Navigator.pushReplacement(
               context,
@@ -333,496 +529,222 @@ class _StudentPreparationPageState extends State<StudentPreparationPage> {
           },
         ),
         actions: [
+          if (_filteredStudents.isNotEmpty && !_isSaving)
+            IconButton(
+              icon: const Icon(Icons.save, color: Colors.white),
+              onPressed: _saveAllAttendance,
+              tooltip: 'حفظ جميع البيانات',
+            ),
           IconButton(
-            icon: Icon(Icons.bar_chart, color: Colors.white),
-            onPressed: () {
-              _showAttendanceStats();
-            },
+            icon: const Icon(Icons.refresh, color: Colors.white),
+            onPressed: _isLoading ? null : _loadData,
+            tooltip: 'تحديث البيانات',
           ),
         ],
       ),
-      body: Column(
-        children: [
-          // إحصائيات سريعة
-          Container(
-            padding: EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFF667eea),
-                  Color(0xFF764ba2),
-                ],
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
               children: [
-                _buildStatItem(Icons.people, "${stats['total']}", "إجمالي"),
-                _buildStatItem(
-                    Icons.check_circle, "${stats['present']}", "حاضر"),
-                _buildStatItem(Icons.cancel, "${stats['absent']}", "غائب"),
-                _buildStatItem(
-                    Icons.schedule, "${stats['notSet']}", "لم يُحدد"),
-              ],
-            ),
-          ),
-
-          // شريط البحث والفلاتر
-          Container(
-            padding: EdgeInsets.all(16),
-            color: Colors.white,
-            child: Column(
-              children: [
-                // شريط البحث
-                TextField(
-                  controller: _searchController,
-                  onChanged: (value) => setState(() => searchQuery = value),
-                  decoration: InputDecoration(
-                    hintText: "ابحث عن طالب...",
-                    prefixIcon: Icon(Icons.search),
-                    suffixIcon: searchQuery.isNotEmpty
-                        ? IconButton(
-                            icon: Icon(Icons.clear),
-                            onPressed: () {
-                              _searchController.clear();
-                              setState(() => searchQuery = '');
-                            },
-                          )
-                        : null,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 10),
-                // الفلاتر
-                Row(
-                  children: [
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: selectedSubject,
-                        decoration: InputDecoration(
-                          labelText: "المادة",
-                          border: OutlineInputBorder(),
-                        ),
-                        items: [
-                          DropdownMenuItem(
-                              value: null, child: Text("جميع المواد")),
-                          ...['رياضيات', 'علوم', 'لغة عربية'].map((subject) =>
-                              DropdownMenuItem(
-                                  value: subject, child: Text(subject))),
-                        ],
-                        onChanged: (value) =>
-                            setState(() => selectedSubject = value),
-                      ),
-                    ),
-                    SizedBox(width: 10),
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: selectedClass,
-                        decoration: InputDecoration(
-                          labelText: "الصف",
-                          border: OutlineInputBorder(),
-                        ),
-                        items: [
-                          DropdownMenuItem(
-                              value: null, child: Text("جميع الصفوف")),
-                          ...['1', '2', '3'].map((cls) => DropdownMenuItem(
-                              value: cls, child: Text(classNames[cls]!))),
-                        ],
-                        onChanged: (value) =>
-                            setState(() => selectedClass = value),
-                      ),
-                    ),
-                    SizedBox(width: 10),
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: selectedSection,
-                        decoration: InputDecoration(
-                          labelText: "الشعبة",
-                          border: OutlineInputBorder(),
-                        ),
-                        items: [
-                          DropdownMenuItem(
-                              value: null, child: Text("جميع الشعب")),
-                          ...['أ', 'ب'].map((section) => DropdownMenuItem(
-                              value: section, child: Text(section))),
-                        ],
-                        onChanged: (value) =>
-                            setState(() => selectedSection = value),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          // معلومات الجلسة
-          Container(
-            padding: EdgeInsets.all(12),
-            color: Colors.grey[100],
-            child: Row(
-              children: [
-                Icon(Icons.calendar_today, size: 16, color: Colors.grey[600]),
-                SizedBox(width: 8),
-                Text("تاريخ اليوم: $today",
-                    style: TextStyle(color: Colors.grey[600])),
-                Spacer(),
-                if (filteredStudents.isNotEmpty)
-                  ElevatedButton.icon(
-                    onPressed: _markAllAsPresent,
-                    icon: Icon(Icons.check, size: 16),
-                    label: Text("تسجيل الكل حاضر"),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-
-          // قائمة الطلاب
-          Expanded(
-            child: filteredStudents.isEmpty
-                ? Center(
+                // معلومات التصفية والتاريخ
+                Card(
+                  margin: const EdgeInsets.all(16),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
                     child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.search_off,
-                            size: 80, color: Colors.grey[300]),
-                        SizedBox(height: 20),
-                        Text(
-                          "لا توجد نتائج",
-                          style:
-                              TextStyle(fontSize: 18, color: Colors.grey[600]),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: DropdownButtonFormField<int>(
+                                decoration: const InputDecoration(
+                                  labelText: "اختر الصف",
+                                  border: OutlineInputBorder(),
+                                  prefixIcon: Icon(Icons.school),
+                                ),
+                                value: _selectedClassId,
+                                items: [
+                                  const DropdownMenuItem(
+                                    value: null,
+                                    child: Text('جميع الصفوف'),
+                                  ),
+                                  ..._classes
+                                      .where((c) => c['id'] != null)
+                                      .map((c) => DropdownMenuItem<int>(
+                                            value: c['id'] is int
+                                                ? c['id']
+                                                : int.tryParse(
+                                                    c['id'].toString()),
+                                            child: Text(c['class_name'] ??
+                                                c['grade_name'] ??
+                                                'الصف ${c['id']}'),
+                                          ))
+                                      ,
+                                ],
+                                onChanged: (value) {
+                                  setState(() {
+                                    _selectedClassId = value;
+                                    _selectedSectionId = null; // نصفر الشعبة
+                                    _filterStudents(); // نصفي الطلاب
+                                  });
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: DropdownButtonFormField<int>(
+                                decoration: const InputDecoration(
+                                  labelText: "اختر الشعبة",
+                                  border: OutlineInputBorder(),
+                                  prefixIcon: Icon(Icons.group),
+                                ),
+                                value: _selectedSectionId,
+                                items: [
+                                  const DropdownMenuItem(
+                                    value: null,
+                                    child: Text('جميع الشعب'),
+                                  ),
+                                  ..._sections
+                                      .where((s) => s['id'] != null)
+                                      .where((s) =>
+                                          _selectedClassId == null ||
+                                          s['class_id'] ==
+                                              _selectedClassId || // ربط بالشعب حسب الصف
+                                          s['grade_id'] == _selectedClassId)
+                                      .map((s) => DropdownMenuItem<int>(
+                                            value: s['id'] is int
+                                                ? s['id']
+                                                : int.tryParse(
+                                                    s['id'].toString()),
+                                            child: Text(s['section_name'] ??
+                                                'الشعبة ${s['id']}'),
+                                          ))
+                                      ,
+                                ],
+                                onChanged: (value) {
+                                  setState(() {
+                                    _selectedSectionId = value;
+                                    _filterStudents();
+                                  });
+                                },
+                              ),
+                            ),
+                          ],
                         ),
-                        SizedBox(height: 10),
-                        Text(
-                          "جرب تغيير عوامل التصفية أو البحث",
-                          style: TextStyle(color: Colors.grey[500]),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Card(
+                                color: Colors.blue[50],
+                                child: Padding(
+                                  padding: const EdgeInsets.all(12),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.calendar_today,
+                                          color: Colors.blue),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            const Text(
+                                              "تاريخ اليوم",
+                                              style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: Colors.grey),
+                                            ),
+                                            Text(
+                                              DateFormat("yyyy-MM-dd")
+                                                  .format(_selectedDate),
+                                              style: const TextStyle(
+                                                  fontWeight: FontWeight.bold),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.edit_calendar,
+                                            size: 20),
+                                        onPressed: _pickDate,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                            if (_filteredStudents.isNotEmpty)
+                              Card(
+                                color: Colors.green[50],
+                                child: Padding(
+                                  padding: const EdgeInsets.all(12),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.people,
+                                          color: Colors.green),
+                                      const SizedBox(width: 8),
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          const Text(
+                                            "عدد الطلاب",
+                                            style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.grey),
+                                          ),
+                                          Text(
+                                            '${_filteredStudents.length}',
+                                            style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 16),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                       ],
                     ),
-                  )
-                : ListView.builder(
-                    padding: EdgeInsets.all(16),
-                    itemCount: filteredStudents.length,
-                    itemBuilder: (context, index) {
-                      final student = filteredStudents[index];
-                      return _buildStudentCard(student, index);
-                    },
                   ),
-          ),
+                ),
 
-          // أزرار التحكم
-          if (filteredStudents.isNotEmpty)
-            Container(
-              padding: EdgeInsets.all(16),
-              color: Colors.white,
-              child: Row(
-                children: [
-                  Expanded(
+                // جدول الطلاب
+                Expanded(
+                  child: _buildStudentTable(),
+                ),
+
+                // زر الحفظ
+                if (_filteredStudents.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.all(16),
                     child: ElevatedButton.icon(
-                      onPressed: _savePreparation,
-                      icon: Icon(Icons.save),
-                      label: Text("حفظ التحضير"),
+                      icon: _isSaving
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.save),
+                      label: Text(_isSaving
+                          ? "جاري حفظ جميع البيانات..."
+                          : "حفظ بيانات ${_filteredStudents.length} طالب"),
+                      onPressed: _isSaving ? null : _saveAllAttendance,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Color(0xFF667eea),
-                        foregroundColor: Colors.white,
-                        padding: EdgeInsets.symmetric(vertical: 15),
+                        backgroundColor: Colors.green,
+                        minimumSize: const Size(double.infinity, 50),
                       ),
                     ),
                   ),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => const MainScreen()),
-                        );
-                      },
-                      icon: Icon(Icons.home),
-                      label: Text("الرئيسية"),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.orange,
-                        foregroundColor: Colors.white,
-                        padding: EdgeInsets.symmetric(vertical: 15),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatItem(IconData icon, String count, String label) {
-    return Column(
-      children: [
-        Container(
-          padding: EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.2),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, color: Colors.white, size: 16),
-        ),
-        SizedBox(height: 4),
-        Text(
-          count,
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.white.withOpacity(0.8),
-            fontSize: 10,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStudentCard(Map<String, dynamic> student, int index) {
-    final attendance = _attendanceRecords[student['id']];
-    final status = attendance?['status'];
-    final note = _notes[student['id']] ?? '';
-    final grade = _grades[student['id']] ?? '';
-
-    return Container(
-      margin: EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 10,
-            offset: Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => _showStudentDetails(student),
-          borderRadius: BorderRadius.circular(15),
-          child: Padding(
-            padding: EdgeInsets.all(16),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    CircleAvatar(
-                      backgroundColor: _getStatusColor(status),
-                      child: Text(
-                        student['first'][0],
-                        style: TextStyle(
-                            color: Colors.white, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "${student['first']} ${student['second']} ${student['third']} ${student['fourth']}",
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            "${classNames[student['class']]} - الشعبة ${student['section']}",
-                            style: TextStyle(
-                                color: Colors.grey[600], fontSize: 12),
-                          ),
-                        ],
-                      ),
-                    ),
-                    _buildStatusIndicator(status),
-                  ],
-                ),
-                SizedBox(height: 12),
-                // عناصر التحكم
-                Row(
-                  children: [
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: status,
-                        decoration: InputDecoration(
-                          labelText: "الحضور",
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 8),
-                        ),
-                        items: [
-                          DropdownMenuItem(
-                              value: null, child: Text("اختر الحضور")),
-                          DropdownMenuItem(value: "حاضر", child: Text("حاضر")),
-                          DropdownMenuItem(value: "غائب", child: Text("غائب")),
-                        ],
-                        onChanged: (value) {
-                          setState(() {
-                            _attendanceRecords[student['id']] = {
-                              'status': value!,
-                              'time':
-                                  DateFormat("HH:mm").format(DateTime.now()),
-                            };
-                          });
-                        },
-                      ),
-                    ),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: grade.isNotEmpty ? grade : null,
-                        decoration: InputDecoration(
-                          labelText: "التقييم",
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 8),
-                        ),
-                        items: [
-                          DropdownMenuItem(value: null, child: Text("التقييم")),
-                          DropdownMenuItem(
-                              value: "ممتاز", child: Text("ممتاز")),
-                          DropdownMenuItem(
-                              value: "جيد جداً", child: Text("جيد جداً")),
-                          DropdownMenuItem(value: "جيد", child: Text("جيد")),
-                          DropdownMenuItem(
-                              value: "مقبول", child: Text("مقبول")),
-                        ],
-                        onChanged: (value) {
-                          setState(() {
-                            _grades[student['id']] = value ?? '';
-                          });
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 8),
-                TextFormField(
-                  initialValue: note,
-                  onChanged: (value) => _notes[student['id']] = value,
-                  decoration: InputDecoration(
-                    labelText: "ملاحظات",
-                    border: OutlineInputBorder(),
-                  ),
-                  maxLines: 2,
-                ),
               ],
             ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatusIndicator(String? status) {
-    Color color;
-    String text;
-
-    switch (status) {
-      case 'حاضر':
-        color = Colors.green;
-        text = 'حاضر';
-        break;
-      case 'غائب':
-        color = Colors.red;
-        text = 'غائب';
-        break;
-      default:
-        color = Colors.orange;
-        text = 'لم يُحدد';
-    }
-
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color),
-      ),
-      child: Text(
-        text,
-        style:
-            TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12),
-      ),
-    );
-  }
-
-  Color _getStatusColor(String? status) {
-    switch (status) {
-      case 'حاضر':
-        return Colors.green;
-      case 'غائب':
-        return Colors.red;
-      default:
-        return Colors.orange;
-    }
-  }
-
-  void _showAttendanceStats() {
-    final stats = attendanceStats;
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text("إحصائيات الحضور"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildStatItemDialog(
-                Icons.people, "إجمالي الطلاب", "${stats['total']}"),
-            _buildStatItemDialog(
-                Icons.check_circle, "الحضور", "${stats['present']}"),
-            _buildStatItemDialog(Icons.cancel, "الغياب", "${stats['absent']}"),
-            _buildStatItemDialog(
-                Icons.schedule, "لم يُحدد", "${stats['notSet']}"),
-            SizedBox(height: 10),
-            LinearProgressIndicator(
-              value:
-                  stats['total']! > 0 ? stats['present']! / stats['total']! : 0,
-              backgroundColor: Colors.grey[300],
-              color: Colors.green,
-            ),
-            SizedBox(height: 5),
-            Text(
-              "نسبة الحضور: ${stats['total']! > 0 ? ((stats['present']! / stats['total']!) * 100).toStringAsFixed(1) : 0}%",
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text("إغلاق"),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatItemDialog(IconData icon, String label, String value) {
-    return ListTile(
-      leading: Icon(icon, color: Color(0xFF667eea)),
-      title: Text(label),
-      trailing: Text(value, style: TextStyle(fontWeight: FontWeight.bold)),
     );
   }
 }

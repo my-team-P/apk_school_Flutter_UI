@@ -23,7 +23,6 @@ class _ExamGradePageState extends State<AddGradePage> {
   File? _examPaperImage;
   final ImagePicker _picker = ImagePicker();
 
-  // بيانات من API - الطلاب، المعلمين، والمواد
   List<dynamic> _students = [];
   List<dynamic> _teachers = [];
   List<dynamic> _subjects = [];
@@ -31,13 +30,9 @@ class _ExamGradePageState extends State<AddGradePage> {
   bool _isLoading = true;
   bool _isSubmitting = false;
 
-  // البيانات الثابتة في الكود
   final List<String> examTypes = ["تجريبي", "شهري", "نهائي"];
-
-  // النسب المئوية من 10% إلى 100%
   final gradesPercentages = List.generate(10, (i) => "${(i + 1) * 10}%");
   final evaluations = ["ضعيف", "مقبول", "جيد", "ممتاز"];
-
   final String _baseUrl = 'http://192.168.1.102:8000/api';
 
   @override
@@ -47,6 +42,7 @@ class _ExamGradePageState extends State<AddGradePage> {
   }
 
   Future<void> _loadData() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
     try {
       final [studentsResponse, teachersResponse, subjectsResponse] =
@@ -56,68 +52,52 @@ class _ExamGradePageState extends State<AddGradePage> {
         http.get(Uri.parse("$_baseUrl/subjects")),
       ]);
 
-      print('Students Status: ${studentsResponse.statusCode}');
-      print('Teachers Status: ${teachersResponse.statusCode}');
-      print('Subjects Status: ${subjectsResponse.statusCode}');
-
-      // معالجة بيانات الطلاب
-      if (studentsResponse.statusCode == 200) {
+      if (studentsResponse.statusCode == 200 && mounted) {
         final data = json.decode(studentsResponse.body);
         setState(() {
           _students =
               data is List ? data : data['data'] ?? data['students'] ?? [];
         });
       } else {
-        print('Students API Error: ${studentsResponse.body}');
         _showErrorSnackBar('فشل في تحميل بيانات الطلاب');
       }
 
-      // معالجة بيانات المعلمين
-      if (teachersResponse.statusCode == 200) {
+      if (teachersResponse.statusCode == 200 && mounted) {
         final data = json.decode(teachersResponse.body);
         setState(() {
           _teachers =
               data is List ? data : data['data'] ?? data['teachers'] ?? [];
         });
       } else {
-        print('Teachers API Error: ${teachersResponse.body}');
         _showErrorSnackBar('فشل في تحميل بيانات المعلمين');
       }
 
-      // معالجة بيانات المواد
-      if (subjectsResponse.statusCode == 200) {
+      if (subjectsResponse.statusCode == 200 && mounted) {
         final data = json.decode(subjectsResponse.body);
         setState(() {
           _subjects =
               data is List ? data : data['data'] ?? data['subjects'] ?? [];
         });
       } else {
-        print('Subjects API Error: ${subjectsResponse.body}');
         _showErrorSnackBar('فشل في تحميل بيانات المواد');
       }
-
-      print(
-          'Loaded ${_students.length} students, ${_teachers.length} teachers, ${_subjects.length} subjects');
     } catch (e) {
-      print('Error loading data: $e');
       _showErrorSnackBar('خطأ في تحميل البيانات: $e');
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   void _showErrorSnackBar(String message) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+      ),
+    );
   }
 
-  // دالة لالتقاط صورة من الكاميرا
   Future<void> _takePhoto() async {
     try {
       final XFile? photo = await _picker.pickImage(
@@ -126,19 +106,14 @@ class _ExamGradePageState extends State<AddGradePage> {
         maxHeight: 1200,
         imageQuality: 80,
       );
-
-      if (photo != null) {
-        setState(() {
-          _examPaperImage = File(photo.path);
-        });
+      if (photo != null && mounted) {
+        setState(() => _examPaperImage = File(photo.path));
       }
     } catch (e) {
-      print('Error taking photo: $e');
       _showErrorSnackBar('خطأ في التقاط الصورة: $e');
     }
   }
 
-  // دالة لاختيار صورة من المعرض
   Future<void> _pickImage() async {
     try {
       final XFile? image = await _picker.pickImage(
@@ -147,26 +122,19 @@ class _ExamGradePageState extends State<AddGradePage> {
         maxHeight: 1200,
         imageQuality: 80,
       );
-
-      if (image != null) {
-        setState(() {
-          _examPaperImage = File(image.path);
-        });
+      if (image != null && mounted) {
+        setState(() => _examPaperImage = File(image.path));
       }
     } catch (e) {
-      print('Error picking image: $e');
       _showErrorSnackBar('خطأ في اختيار الصورة: $e');
     }
   }
 
-  // دالة لحذف الصورة المحددة
   void _removeImage() {
-    setState(() {
-      _examPaperImage = null;
-    });
+    if (!mounted) return;
+    setState(() => _examPaperImage = null);
   }
 
-  // دالة للحصول على اسم الطالب
   String _getStudentName(dynamic student) {
     if (student is! Map) return 'غير معروف';
     return student['name'] ??
@@ -175,7 +143,6 @@ class _ExamGradePageState extends State<AddGradePage> {
         'طالب ${student['id']}';
   }
 
-  // دالة للحصول على اسم المعلم
   String _getTeacherName(dynamic teacher) {
     if (teacher is! Map) return 'غير معروف';
     return teacher['name'] ??
@@ -184,7 +151,6 @@ class _ExamGradePageState extends State<AddGradePage> {
         'معلم ${teacher['id']}';
   }
 
-  // دالة للحصول على اسم المادة
   String _getSubjectName(dynamic subject) {
     if (subject is! Map) return 'غير معروف';
     return subject['name'] ??
@@ -193,103 +159,114 @@ class _ExamGradePageState extends State<AddGradePage> {
         'مادة ${subject['id']}';
   }
 
-  Future<void> _submitGrade() async {
-    // التحقق من تعبئة جميع الحقول
-    if (selectedStudentId == null ||
-        selectedTeacherId == null ||
-        selectedSubjectId == null ||
-        selectedExamType == null ||
-        selectedGrade == null ||
-        selectedFinalGrade == null ||
-        selectedEvaluation == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("يرجى تعبئة كل الحقول المطلوبة"),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-    // تحويل النسبة المئوية إلى أرقام
-    final score = _convertPercentageToNumber(selectedGrade!);
-    final totalScore = _convertPercentageToNumber(selectedFinalGrade!);
-
-    // التحقق من أن الدرجة التي حصل عليها لا تتجاوز الدرجة النهائية
-    if (score > totalScore) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-              "الدرجة التي حصل عليها لا يمكن أن تكون أكبر من الدرجة النهائية"),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    try {
-      setState(() => _isSubmitting = true);
-
-      // إنشاء multipart request
-      var request =
-          http.MultipartRequest('POST', Uri.parse("$_baseUrl/grades"));
-
-      // إضافة الحقول النصية
-      request.fields.addAll({
-        'student_id': selectedStudentId!,
-        'teacher_id': selectedTeacherId!,
-        'subject_id': selectedSubjectId!,
-        'exam_type': selectedExamType!,
-        'score': score.toString(),
-        'total_score': totalScore.toString(),
-        'evaluation': selectedEvaluation!,
-      });
-
-      // إضافة الصورة إذا كانت موجودة
-      if (_examPaperImage != null) {
-        request.files.add(await http.MultipartFile.fromPath(
-          'exam_paper',
-          _examPaperImage!.path,
-          filename: 'exam_paper_${DateTime.now().millisecondsSinceEpoch}.jpg',
-        ));
-      }
-
-      // إرسال الطلب
-      final response = await request.send();
-      final responseBody = await response.stream.bytesToString();
-
-      print('Response Status: ${response.statusCode}');
-      print('Response Body: $responseBody');
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final responseData = json.decode(responseBody);
-        _showSuccessMessage(
-            message: responseData['message'] ?? 'تم إضافة الدرجة بنجاح');
-      } else {
-        final errorData = json.decode(responseBody);
-        print('Error Details: $errorData');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-                "فشل في إضافة الدرجة: ${errorData['message'] ?? errorData['error'] ?? 'خطأ غير معروف'}"),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } catch (e) {
-      print('Exception: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("خطأ في الاتصال: $e"),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      setState(() => _isSubmitting = false);
-    }
+Future<void> _submitGrade() async {
+  if (selectedStudentId == null ||
+      selectedTeacherId == null ||
+      selectedSubjectId == null ||
+      selectedExamType == null ||
+      selectedGrade == null ||
+      selectedFinalGrade == null ||
+      selectedEvaluation == null) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("يرجى تعبئة كل الحقول المطلوبة"),
+        backgroundColor: Colors.orange,
+      ),
+    );
+    return;
   }
 
+  final score = _convertPercentageToNumber(selectedGrade!);
+  final totalScore = _convertPercentageToNumber(selectedFinalGrade!);
+
+  if (score > totalScore) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("الدرجة التي حصل عليها لا يمكن أن تكون أكبر من الدرجة النهائية"),
+        backgroundColor: Colors.red,
+      ),
+    );
+    return;
+  }
+
+  try {
+    if (mounted) setState(() => _isSubmitting = true);
+
+    var request = http.MultipartRequest(
+      'POST',
+      Uri.parse("$_baseUrl/grades"),
+    );
+
+    request.fields.addAll({
+      'student_id': selectedStudentId!,
+      'teacher_id': selectedTeacherId!,
+      'subject_id': selectedSubjectId!,
+      'exam_type': selectedExamType!,
+      'score': score.toString(),
+      'total_score': totalScore.toString(),
+      'evaluation': selectedEvaluation!,
+    });
+
+    if (_examPaperImage != null) {
+      request.files.add(await http.MultipartFile.fromPath(
+        'exam_paper',
+        _examPaperImage!.path,
+        filename: 'exam_paper_${DateTime.now().millisecondsSinceEpoch}.jpg',
+      ));
+    }
+
+    final streamedResponse = await request.send();
+    final responseBody = await streamedResponse.stream.bytesToString();
+
+    // محاولة تحويل الرد إلى JSON بأمان
+    dynamic data;
+    try {
+      data = json.decode(responseBody);
+    } catch (_) {
+      data = null;
+    }
+
+    if (!mounted) return;
+
+    if (streamedResponse.statusCode == 200 || streamedResponse.statusCode == 201) {
+      _showSuccessMessage(message: data?['message'] ?? 'تم إضافة الدرجة بنجاح');
+    } else if (streamedResponse.statusCode == 422) {
+      final errors = data?['errors'] ?? {};
+      String errorMessage = errors.entries
+          .map((e) => "${e.key}: ${e.value.join(", ")}")
+          .join("\n");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("خطأ في البيانات:\n$errorMessage"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+              "فشل في إضافة الدرجة: ${data?['message'] ?? 'خطأ غير معروف'}"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  } catch (e) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("خطأ في الاتصال: $e"),
+        backgroundColor: Colors.red,
+      ),
+    );
+  } finally {
+    if (mounted) setState(() => _isSubmitting = false);
+  }
+}
+
   void _showSuccessMessage({String message = 'تم إضافة الدرجة بنجاح'}) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
@@ -300,7 +277,6 @@ class _ExamGradePageState extends State<AddGradePage> {
     _clearForm();
   }
 
-  // تحويل النسبة المئوية إلى رقم (مثال: "80%" => 80.0)
   double _convertPercentageToNumber(String percentage) {
     try {
       return double.parse(percentage.replaceAll('%', ''));
@@ -310,6 +286,7 @@ class _ExamGradePageState extends State<AddGradePage> {
   }
 
   void _clearForm() {
+    if (!mounted) return;
     setState(() {
       selectedStudentId = null;
       selectedTeacherId = null;
@@ -352,88 +329,32 @@ class _ExamGradePageState extends State<AddGradePage> {
               padding: const EdgeInsets.all(16.0),
               child: ListView(
                 children: [
-                  // بطاقة المعلومات
-                  Card(
-                    elevation: 2,
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(Icons.info_outline, color: Colors.blue),
-                              SizedBox(width: 8),
-                              Text(
-                                "إضافة درجة جديدة",
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.blue[700],
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            "اختر الطالب والمعلم والمادة ثم أدخل تفاصيل الدرجة",
-                            style: TextStyle(color: Colors.grey[600]),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  SizedBox(height: 20),
-
-                  // اختيار الطالب
+                  // بقية الـ Widgets كما هي
                   _buildStudentDropdown(),
                   const SizedBox(height: 16),
-
-                  // اختيار المعلم
                   _buildTeacherDropdown(),
                   const SizedBox(height: 16),
-
-                  // اختيار المادة
                   _buildSubjectDropdown(),
                   const SizedBox(height: 16),
-
-                  // اختيار نوع الاختبار
                   _buildExamTypeDropdown(),
                   const SizedBox(height: 16),
-
-                  // الدرجة التي حصل عليها
-                  _buildGradeDropdown(
-                    "الدرجة التي حصل عليها *",
-                    selectedGrade,
-                    (v) => setState(() => selectedGrade = v),
-                  ),
-
+                  _buildGradeDropdown("الدرجة التي حصل عليها *", selectedGrade,
+                      (v) {
+                    if (!mounted) return;
+                    setState(() => selectedGrade = v);
+                  }),
                   const SizedBox(height: 16),
-
-                  // الدرجة النهائية
-                  _buildGradeDropdown(
-                    "الدرجة النهائية *",
-                    selectedFinalGrade,
-                    (v) => setState(() => selectedFinalGrade = v),
-                  ),
-
+                  _buildGradeDropdown("الدرجة النهائية *", selectedFinalGrade,
+                      (v) {
+                    if (!mounted) return;
+                    setState(() => selectedFinalGrade = v);
+                  }),
                   const SizedBox(height: 16),
-
-                  // التقييم
                   _buildEvaluationDropdown(),
-
                   const SizedBox(height: 16),
-
-                  // رفع صورة ورقة الامتحان
                   _buildImageUploadSection(),
-
                   const SizedBox(height: 30),
-
-                  // أزرار الحفظ والمسح
                   _buildActionButtons(),
-
-                  // معلومات إضافية
                   _buildNotesSection(),
                 ],
               ),
@@ -461,7 +382,7 @@ class _ExamGradePageState extends State<AddGradePage> {
             value: studentId,
             child: Text(studentName),
           );
-        }).toList(),
+        }),
       ],
       onChanged: (v) => setState(() => selectedStudentId = v),
     );
@@ -487,7 +408,7 @@ class _ExamGradePageState extends State<AddGradePage> {
             value: teacherId,
             child: Text(teacherName),
           );
-        }).toList(),
+        }),
       ],
       onChanged: (v) => setState(() => selectedTeacherId = v),
     );
@@ -513,7 +434,7 @@ class _ExamGradePageState extends State<AddGradePage> {
             value: subjectId,
             child: Text(subjectName),
           );
-        }).toList(),
+        }),
       ],
       onChanged: (v) => setState(() => selectedSubjectId = v),
     );
@@ -538,7 +459,7 @@ class _ExamGradePageState extends State<AddGradePage> {
             value: type,
             child: Text(type),
           );
-        }).toList(),
+        }),
       ],
       onChanged: (v) => setState(() => selectedExamType = v),
     );
@@ -560,7 +481,7 @@ class _ExamGradePageState extends State<AddGradePage> {
         ),
         ...gradesPercentages.map((g) {
           return DropdownMenuItem(value: g, child: Text(g));
-        }).toList(),
+        }),
       ],
       onChanged: onChanged,
     );
@@ -581,7 +502,7 @@ class _ExamGradePageState extends State<AddGradePage> {
         ),
         ...evaluations.map((ev) {
           return DropdownMenuItem(value: ev, child: Text(ev));
-        }).toList(),
+        }),
       ],
       onChanged: (v) => setState(() => selectedEvaluation = v),
     );

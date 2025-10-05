@@ -15,7 +15,7 @@ class SchoolNews extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Color(0xFFF6E6CC), // لون الشعار الأساسي
+            Color.fromARGB(255, 255, 255, 255), // لون الشعار الأساسي
             Color(0xFFF8F0E5), // فاتح قليلاً
             Color(0xFFF6E6CC), // لون الشعار الأساسي
           ],
