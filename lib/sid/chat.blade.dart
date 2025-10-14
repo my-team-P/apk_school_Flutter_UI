@@ -4,7 +4,9 @@ import 'dart:convert';
 import 'package:admin/screens/main/main_screen.dart';
 
 class ChatPage extends StatefulWidget {
-  const ChatPage({super.key});
+  final String role; // <-- أضف هذا
+
+  const ChatPage({super.key, required this.role});
 
   @override
   State<ChatPage> createState() => _ChatPageState();
@@ -405,7 +407,9 @@ class _ChatPageState extends State<ChatPage> {
           onPressed: () {
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (context) => const MainScreen()),
+              MaterialPageRoute(
+                builder: (context) => MainScreen(role: widget.role), // <-- هنا
+              ),
             );
           },
         ),

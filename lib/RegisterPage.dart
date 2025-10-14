@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:admin/login.blade.dart';
-import 'package:admin/screens/main/main_screen.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -29,7 +28,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://192.168.1.102:8000/api/register'),
+        Uri.parse('http://192.168.1.107:8000/api/register'),
         body: {
           'name': _nameController.text,
           'email': _emailController.text,
@@ -41,30 +40,27 @@ class _RegisterPageState extends State<RegisterPage> {
         _isLoading = false;
       });
 
-      if (response.statusCode == 201) {
-        final data = json.decode(response.body);
-        //  if (data['success'] == true) {
-        //   // نجاح تسجيل الدخول → الانتقال للصفحة الرئيسية
-        //   Navigator.pushReplacement(
-        //     context,
-        //     MaterialPageRoute(builder: (context) => const LoginPage()),
-        //   );
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        // تسجيل ناجح
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(data['message']),
+          const SnackBar(
+            content: Text('تم إنشاء الحساب بنجاح!'),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
           ),
         );
+
+        // الانتقال إلى صفحة تسجيل الدخول
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const MainScreen()),
+          MaterialPageRoute(builder: (context) => const LoginPage_S()),
         );
       } else {
+        // الحصول على رسالة الخطأ من السيرفر
         final error = json.decode(response.body);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(error['error'] ?? 'Registration failed'),
+            content: Text(error['error'] ?? 'فشل التسجيل'),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
           ),
@@ -75,8 +71,8 @@ class _RegisterPageState extends State<RegisterPage> {
         _isLoading = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('تعذر الاتصال بالسيرفر'),
+        const SnackBar(
+          content: Text('تعذر الاتصال بالسيرفر'),
           backgroundColor: Colors.orange,
           behavior: SnackBarBehavior.floating,
         ),
@@ -396,7 +392,8 @@ class _RegisterPageState extends State<RegisterPage> {
                                 Navigator.pushReplacement(
                                   context,
                                   MaterialPageRoute(
-                                      builder: (context) => const LoginPage()),
+                                      builder: (context) =>
+                                          const LoginPage_S()),
                                 );
                               },
                               child: const Text(

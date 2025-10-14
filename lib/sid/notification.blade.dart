@@ -4,7 +4,10 @@ import 'dart:convert';
 import 'package:admin/screens/main/main_screen.dart';
 
 class NotificationPage extends StatefulWidget {
-  const NotificationPage({super.key});
+  final String role; // <-- أضف هذا
+
+  const NotificationPage({super.key, required this.role});
+
 
   @override
   State<NotificationPage> createState() => _NotificationPageState();
@@ -60,10 +63,12 @@ class _NotificationPageState extends State<NotificationPage> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const MainScreen()),
-            );
+          Navigator.pushReplacement(
+  context,
+  MaterialPageRoute(
+    builder: (context) => MainScreen(role: widget.role), // <-- هنا
+  ),
+);
           },
         ),
       ),

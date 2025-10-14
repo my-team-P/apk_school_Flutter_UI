@@ -6,7 +6,10 @@ import 'package:admin/screens/main/main_screen.dart';
 //MyMemory API تم استخدامه للترجمة وهو مجاني
 
 class TranslationPage extends StatefulWidget {
-  const TranslationPage({super.key});
+  final String role; // <-- أضف هذا
+
+  const TranslationPage({super.key, required this.role});
+
 
   @override
   State<TranslationPage> createState() => _TranslationPageState();
@@ -523,10 +526,12 @@ class _TranslationPageState extends State<TranslationPage> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const MainScreen()),
-            );
+         Navigator.pushReplacement(
+  context,
+  MaterialPageRoute(
+    builder: (context) => MainScreen(role: widget.role), // <-- هنا
+  ),
+);
           },
         ),
         actions: [

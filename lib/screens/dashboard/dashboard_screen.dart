@@ -8,7 +8,9 @@ import 'package:admin/sid/notification.blade.dart';
 import 'package:admin/sid/setting.blade.dart';
 
 class DashboardScreen extends StatelessWidget {
-  const DashboardScreen({super.key});
+  final String role; // "teacher" أو "student"
+
+  const DashboardScreen({super.key, required this.role});
 
   @override
   Widget build(BuildContext context) {
@@ -106,10 +108,13 @@ class DashboardScreen extends StatelessWidget {
             isActive: true,
             onTap: () {
               _showFeedback(context);
+
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(
-                    builder: (context) => const DashboardScreen()),
+                  builder: (context) =>
+                      DashboardScreen(role: role), // ✅ تمرير الدور
+                ),
               );
             },
           ),
@@ -121,10 +126,13 @@ class DashboardScreen extends StatelessWidget {
             isActive: false,
             onTap: () {
               _showFeedback(context);
+
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(
-                    builder: (context) => const NotificationPage()),
+                  builder: (context) =>
+                      NotificationPage(role: role), // ✅ تمرير الدور
+                ),
               );
             },
           ),
@@ -152,9 +160,13 @@ class DashboardScreen extends StatelessWidget {
             isActive: false,
             onTap: () {
               _showFeedback(context);
+
               Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(builder: (context) => const SettingsPage()),
+                MaterialPageRoute(
+                  builder: (context) =>
+                      SettingsPage(role: role), // ✅ تمرير الدور
+                ),
               );
             },
           ),

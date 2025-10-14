@@ -4,7 +4,10 @@ import 'package:http/http.dart' as http;
 import 'package:admin/screens/main/main_screen.dart';
 
 class SimpleExamsPage extends StatefulWidget {
-  const SimpleExamsPage({super.key});
+  final String role; // <-- أضف هذا
+
+  const SimpleExamsPage({super.key, required this.role});
+
 
   @override
   State<SimpleExamsPage> createState() => _SimpleExamsPageState();
@@ -164,9 +167,11 @@ class _SimpleExamsPageState extends State<SimpleExamsPage> {
             icon: const Icon(Icons.arrow_back, color: Colors.black),
             onPressed: () {
               Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const MainScreen()),
-              );
+  context,
+  MaterialPageRoute(
+    builder: (context) => MainScreen(role: widget.role), // <-- هنا
+  ),
+);
             }),
       ),
       body: _isLoadingData

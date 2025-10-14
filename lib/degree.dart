@@ -5,6 +5,7 @@ import 'package:admin/screens/main/main_screen.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 
+
 class AddGradePage extends StatefulWidget {
   const AddGradePage({super.key});
 
@@ -159,111 +160,113 @@ class _ExamGradePageState extends State<AddGradePage> {
         'مادة ${subject['id']}';
   }
 
-Future<void> _submitGrade() async {
-  if (selectedStudentId == null ||
-      selectedTeacherId == null ||
-      selectedSubjectId == null ||
-      selectedExamType == null ||
-      selectedGrade == null ||
-      selectedFinalGrade == null ||
-      selectedEvaluation == null) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("يرجى تعبئة كل الحقول المطلوبة"),
-        backgroundColor: Colors.orange,
-      ),
-    );
-    return;
-  }
-
-  final score = _convertPercentageToNumber(selectedGrade!);
-  final totalScore = _convertPercentageToNumber(selectedFinalGrade!);
-
-  if (score > totalScore) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("الدرجة التي حصل عليها لا يمكن أن تكون أكبر من الدرجة النهائية"),
-        backgroundColor: Colors.red,
-      ),
-    );
-    return;
-  }
-
-  try {
-    if (mounted) setState(() => _isSubmitting = true);
-
-    var request = http.MultipartRequest(
-      'POST',
-      Uri.parse("$_baseUrl/grades"),
-    );
-
-    request.fields.addAll({
-      'student_id': selectedStudentId!,
-      'teacher_id': selectedTeacherId!,
-      'subject_id': selectedSubjectId!,
-      'exam_type': selectedExamType!,
-      'score': score.toString(),
-      'total_score': totalScore.toString(),
-      'evaluation': selectedEvaluation!,
-    });
-
-    if (_examPaperImage != null) {
-      request.files.add(await http.MultipartFile.fromPath(
-        'exam_paper',
-        _examPaperImage!.path,
-        filename: 'exam_paper_${DateTime.now().millisecondsSinceEpoch}.jpg',
-      ));
-    }
-
-    final streamedResponse = await request.send();
-    final responseBody = await streamedResponse.stream.bytesToString();
-
-    // محاولة تحويل الرد إلى JSON بأمان
-    dynamic data;
-    try {
-      data = json.decode(responseBody);
-    } catch (_) {
-      data = null;
-    }
-
-    if (!mounted) return;
-
-    if (streamedResponse.statusCode == 200 || streamedResponse.statusCode == 201) {
-      _showSuccessMessage(message: data?['message'] ?? 'تم إضافة الدرجة بنجاح');
-    } else if (streamedResponse.statusCode == 422) {
-      final errors = data?['errors'] ?? {};
-      String errorMessage = errors.entries
-          .map((e) => "${e.key}: ${e.value.join(", ")}")
-          .join("\n");
+  Future<void> _submitGrade() async {
+    if (selectedStudentId == null ||
+        selectedTeacherId == null ||
+        selectedSubjectId == null ||
+        selectedExamType == null ||
+        selectedGrade == null ||
+        selectedFinalGrade == null ||
+        selectedEvaluation == null) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("خطأ في البيانات:\n$errorMessage"),
-          backgroundColor: Colors.red,
+        const SnackBar(
+          content: Text("يرجى تعبئة كل الحقول المطلوبة"),
+          backgroundColor: Colors.orange,
         ),
       );
-    } else {
+      return;
+    }
+
+    final score = _convertPercentageToNumber(selectedGrade!);
+    final totalScore = _convertPercentageToNumber(selectedFinalGrade!);
+
+    if (score > totalScore) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           content: Text(
-              "فشل في إضافة الدرجة: ${data?['message'] ?? 'خطأ غير معروف'}"),
+              "الدرجة التي حصل عليها لا يمكن أن تكون أكبر من الدرجة النهائية"),
           backgroundColor: Colors.red,
         ),
       );
+      return;
     }
-  } catch (e) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text("خطأ في الاتصال: $e"),
-        backgroundColor: Colors.red,
-      ),
-    );
-  } finally {
-    if (mounted) setState(() => _isSubmitting = false);
+
+    try {
+      if (mounted) setState(() => _isSubmitting = true);
+
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse("$_baseUrl/grades"),
+      );
+
+      request.fields.addAll({
+        'student_id': selectedStudentId!,
+        'teacher_id': selectedTeacherId!,
+        'subject_id': selectedSubjectId!,
+        'exam_type': selectedExamType!,
+        'score': score.toString(),
+        'total_score': totalScore.toString(),
+        'evaluation': selectedEvaluation!,
+      });
+
+      if (_examPaperImage != null) {
+        request.files.add(await http.MultipartFile.fromPath(
+          'exam_paper',
+          _examPaperImage!.path,
+          filename: 'exam_paper_${DateTime.now().millisecondsSinceEpoch}.jpg',
+        ));
+      }
+
+      final streamedResponse = await request.send();
+      final responseBody = await streamedResponse.stream.bytesToString();
+
+      dynamic data;
+      try {
+        data = json.decode(responseBody);
+      } catch (_) {
+        data = null;
+      }
+
+      if (!mounted) return;
+
+      if (streamedResponse.statusCode == 200 ||
+          streamedResponse.statusCode == 201) {
+        _showSuccessMessage(
+            message: data?['message'] ?? 'تم إضافة الدرجة بنجاح');
+      } else if (streamedResponse.statusCode == 422) {
+        final errors = data?['errors'] ?? {};
+        String errorMessage = errors.entries
+            .map((e) => "${e.key}: ${e.value.join(", ")}")
+            .join("\n");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("خطأ في البيانات:\n$errorMessage"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                "فشل في إضافة الدرجة: ${data?['message'] ?? 'خطأ غير معروف'}"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("خطأ في الاتصال: $e"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
   }
-}
 
   void _showSuccessMessage({String message = 'تم إضافة الدرجة بنجاح'}) {
     if (!mounted) return;
@@ -311,7 +314,8 @@ Future<void> _submitGrade() async {
           onPressed: () {
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (context) => const MainScreen()),
+              MaterialPageRoute(
+                  builder: (context) => MainScreen(role: 'teacher')),
             );
           },
         ),
@@ -329,7 +333,6 @@ Future<void> _submitGrade() async {
               padding: const EdgeInsets.all(16.0),
               child: ListView(
                 children: [
-                  // بقية الـ Widgets كما هي
                   _buildStudentDropdown(),
                   const SizedBox(height: 16),
                   _buildTeacherDropdown(),

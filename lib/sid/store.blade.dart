@@ -4,7 +4,9 @@ import 'package:http/http.dart' as http;
 import 'package:admin/screens/main/main_screen.dart';
 
 class StorePage extends StatefulWidget {
-  const StorePage({super.key});
+  final String role; // <-- أضف هذا
+
+  const StorePage({super.key, required this.role});
 
   @override
   State<StorePage> createState() => _StorePageState();
@@ -379,7 +381,9 @@ class _StorePageState extends State<StorePage> {
           onPressed: () {
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (context) => const MainScreen()),
+              MaterialPageRoute(
+                builder: (context) => MainScreen(role: widget.role), // <-- هنا
+              ),
             );
           },
         ),

@@ -6,7 +6,10 @@ import 'dart:io';
 import 'package:admin/screens/main/main_screen.dart';
 
 class SimpleLibraryPage extends StatefulWidget {
-  const SimpleLibraryPage({super.key});
+  final String role; // <-- أضف هذا
+
+  const SimpleLibraryPage({super.key, required this.role});
+
 
   @override
   State<SimpleLibraryPage> createState() => _SimpleLibraryPageState();
@@ -35,7 +38,7 @@ class _SimpleLibraryPageState extends State<SimpleLibraryPage> {
   List<dynamic> _subjects = [];
 
   // رابط الـ API
-  final String _baseUrl = 'http://192.168.1.102:8000/api/library';
+  final String _baseUrl = 'http://192.168.1.107:8000/api/library';
 
   // التصنيفات الثابتة
   final List<String> _categories = [
@@ -232,10 +235,12 @@ class _SimpleLibraryPageState extends State<SimpleLibraryPage> {
         leading: IconButton(
             icon: Icon(Icons.arrow_back, color: Colors.white),
             onPressed: () {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const MainScreen()),
-              );
+             Navigator.pushReplacement(
+  context,
+  MaterialPageRoute(
+    builder: (context) => MainScreen(role: widget.role), // <-- هنا
+  ),
+);
             }),
       ),
       body: _isLoadingData

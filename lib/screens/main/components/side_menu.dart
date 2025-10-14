@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
-import 'package:admin/screens/main/components/My_prof.blade.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+// صفحات عامة
 import 'package:admin/sid/library.blade.dart';
 import 'package:admin/sid/notification.blade.dart';
 import 'package:admin/sid/setting.blade.dart';
@@ -8,24 +9,25 @@ import 'package:admin/sid/store.blade.dart';
 import 'package:admin/sid/student.blade.dart';
 import 'package:admin/sid/translation.blade.dart';
 import 'package:admin/sid/chat.blade.dart';
-import 'package:admin/add_teacher.dart';
-import 'package:admin/show/show.dart';
-import 'package:admin/show/lib.dart';
-import 'package:admin/sid/exam.dart';
-import 'package:admin/RegisterPage.dart';
 import 'package:admin/degree.dart';
 import 'package:admin/show/deg.dart';
 import 'package:admin/first_screen.dart';
+import 'package:admin/add_teacher.dart';
+import 'package:admin/show/show.dart';
 
 class SideMenu extends StatelessWidget {
-  const SideMenu({
-    super.key,
-  });
+  final String role; // "admin", "teacher", "student"
+
+  const SideMenu({super.key, required this.role});
 
   @override
   Widget build(BuildContext context) {
+    final isAdmin = role == 'admin';
+    final isTeacher = role == 'teacher';
+    final isStudent = role == 'student';
+
     return Drawer(
-      elevation: 10,
+      elevation: 8,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.only(
           topRight: Radius.circular(30),
@@ -34,526 +36,207 @@ class SideMenu extends StatelessWidget {
       ),
       child: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
+          gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Color(0xFFF6E6CC), // اللون الأساسي من الشعار
-              Color.fromARGB(255, 109, 94, 62), // درجة أفتح قليلاً
-              Color.fromARGB(255, 204, 138, 14), // درجة أغمق قليلاً
-              Color.fromARGB(255, 96, 95, 93), // درجة كريمية دافئة
+              Color(0xFFF6E6CC),
+              Color(0xFF6D5E3E),
+              Color(0xFFCC8A0E),
+              Color(0xFF605F5D),
             ],
-          ),
-          borderRadius: const BorderRadius.only(
-            topRight: Radius.circular(30),
-            bottomRight: Radius.circular(30),
           ),
         ),
         child: ListView(
           children: [
-            // Header مع تصميم جميل
-            Container(
-              height: 200,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.white.withOpacity(0.2),
-                    Colors.white.withOpacity(0.1),
-                  ],
-                ),
-                borderRadius: const BorderRadius.only(
-                  topRight: Radius.circular(30),
-                ),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // الصورة مع تأثير دائري
-                  Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.5),
-                        width: 3,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.3),
-                          blurRadius: 10,
-                          offset: Offset(0, 5),
-                        ),
-                      ],
-                    ),
-                    child: ClipOval(
-                      child: Image.asset(
-                        "assets/images/logo.png",
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [
-                                  Color(0xFFff7e5f),
-                                  Color(0xFFfeb47b),
-                                ],
-                              ),
-                            ),
-                            child: Icon(
-                              Icons.school,
-                              color: Colors.white,
-                              size: 40,
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: 15),
-                  Text(
-                    "المدرسة الذكية",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      shadows: [
-                        Shadow(
-                          blurRadius: 10,
-                          color: Colors.black.withOpacity(0.3),
-                        ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(height: 5),
-                  Text(
-                    "نظام الإدارة المدرسية",
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.8),
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            _buildHeader(),
+            const SizedBox(height: 10),
 
-            // قائمة العناصر
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 20),
-              child: Column(
-                children: [
-                  _buildMenuTile(
-                    title: "الطلاب",
-                    svgSrc: "assets/icons/menu_dashboard.svg",
-                    icon: Icons.people,
-                    color: Color(0xFF4facfe),
-                    press: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) =>
-                                const StudentPreparationPage()),
-                      );
-                    },
-                  ),
-                  _buildMenuTile(
-                    title: "الترجمة",
-                    svgSrc: "assets/icons/menu_tran.svg",
-                    icon: Icons.translate,
-                    color: Color(0xFF43e97b),
-                    press: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const TranslationPage()),
-                      );
-                    },
-                  ),
-                  _buildMenuTile(
-                    title: "اضافة درجات ",
-                    svgSrc: "assets/icons/menu_tran.svg",
-                    icon: Icons.add,
-                    color: Color.fromARGB(255, 176, 167, 167),
-                    press: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (context) => AddGradePage()),
-                      );
-                    },
-                  ),
-                  _buildMenuTile(
-                    title: "اضافة معلم جديد",
-                    svgSrc: "assets/icons/menu_tran.svg",
-                    icon: Icons.add,
-                    color: Color.fromARGB(255, 176, 167, 167),
-                    press: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => AddTeacherPage()),
-                      );
-                    },
-                  ),
-                  _buildMenuTile(
-                    title: "اضافة طالب جديد",
-                    svgSrc: "assets/icons/menu_tran.svg",
-                    icon: Icons.add,
-                    color: Color.fromARGB(255, 176, 167, 167),
-                    press: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (context) => RegisterPage()),
-                      );
-                    },
-                  ),
-                  _buildMenuTile(
-                    title: "معاينة الدرجات",
-                    svgSrc: "assets/icons/menu_tran.svg",
-                    icon: Icons.show_chart,
-                    color: Color.fromARGB(255, 18, 17, 17),
-                    press: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => ViewGradesPage()),
-                      );
-                    },
-                  ),
-                  _buildMenuTile(
-                    title: "تسجيل الدخول",
-                    svgSrc: "assets/icons/menu_tran.svg",
-                    icon: Icons.login,
-                    color: Color(0xFFff6b6b),
-                    press: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const UserTypeSelectionApp()),
-                      );
-                    },
-                  ),
-                  _buildMenuTile(
-                    title: "الدردشة الذكية",
-                    svgSrc: "assets/icons/menu_task.svg",
-                    icon: Icons.chat,
-                    color: Color(0xFFa8edea),
-                    press: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const ChatPage()),
-                      );
-                    },
-                  ),
-                  _buildMenuTile(
-                    title: "المكتبة",
-                    svgSrc: "assets/icons/menu_doc.svg",
-                    icon: Icons.library_books,
-                    color: Color(0xFFfbc2eb),
-                    press: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const SimpleLibraryPage()),
-                      );
-                    },
-                  ),
-                  _buildMenuTile(
-                    title: "الاختبارات",
-                    svgSrc: "assets/icons/menu_store.svg",
-                    icon: Icons.store,
-                    color: Color(0xFFffd1ff),
-                    press: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const StorePage()),
-                      );
-                    },
-                  ),
-                  _buildMenuTile(
-                    title: "الإشعارات",
-                    svgSrc: "assets/icons/menu_notification.svg",
-                    icon: Icons.notifications,
-                    color: Color(0xFFfdcbf1),
-                    press: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const NotificationPage()),
-                      );
-                    },
-                  ),
-                  _buildMenuTile(
-                    title: "الملف الشخصي",
-                    svgSrc: "assets/icons/menu_profile.svg",
-                    icon: Icons.person,
-                    color: Color(0xFFa6c0fe),
-                    press: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const ProfilePage()),
-                      );
-                    },
-                  ),
-                  _buildMenuTile(
-                    title: "الإعدادات",
-                    svgSrc: "assets/icons/menu_setting.svg",
-                    icon: Icons.settings,
-                    color: Color(0xFFf6d365),
-                    press: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const SettingsPage()),
-                      );
-                    },
-                  ),
-                  _buildMenuTile(
-                    title: "رفع اختبار",
-                    svgSrc: "assets/icons/menu_setting.svg",
-                    icon: Icons.add_comment,
-                    color: Color(0xFFf6d365),
-                    press: () {
-                      Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const SimpleExamsPage(),
-                          ));
-                    },
-                  ),
-                  _buildMenuTile(
-                    title: "عرض الطلاب + المعلمين",
-                    svgSrc: "assets/icons/menu_setting.svg",
-                    icon: Icons.settings,
-                    color: Color(0xFFf6d365),
-                    press: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (context) => PeoplePage()),
-                      );
-                    },
-                  ),
-                  _buildMenuTile(
-                    title: "عرض الكتب",
-                    svgSrc: "assets/icons/menu_setting.svg",
-                    icon: Icons.settings,
-                    color: Color(0xFFf6d365),
-                    press: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const LibraryPage()),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
+            // --- الصفحات العامة للجميع ---
+            _buildMenuTile(
+                context, "الإعدادات", Icons.settings, Color(0xFFf6d365), () {
+              Navigator.pushReplacement(context,
+                  MaterialPageRoute(builder: (_) => SettingsPage(role: role)));
+            }),
+            _buildMenuTile(
+                context, "الإشعارات", Icons.notifications, Color(0xFFfdcbf1),
+                () {
+              Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => NotificationPage(role: role)));
+            }),
+            _buildMenuTile(
+                context, "الدردشة الذكية", Icons.chat, Color(0xFFa8edea), () {
+              Navigator.pushReplacement(context,
+                  MaterialPageRoute(builder: (_) => ChatPage(role: role)));
+            }),
+            _buildMenuTile(
+                context, "الترجمة", Icons.translate, Color(0xFF43e97b), () {
+              Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => TranslationPage(role: role)));
+            }),
 
-            // Footer
-            Container(
-              margin: EdgeInsets.all(20),
-              padding: EdgeInsets.all(15),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(15),
-                border: Border.all(color: Colors.white.withOpacity(0.2)),
-              ),
-              child: Column(
-                children: [
-                  Text(
-                    "الإصدار 1.0.0",
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.7),
-                      fontSize: 12,
-                    ),
-                  ),
-                  SizedBox(height: 5),
-                  Text(
-                    "جميع الحقوق محفوظة",
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.7),
-                      fontSize: 10,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            // --- الصفحات الخاصة بالمدير ---
+            if (isAdmin) ...[
+              const Divider(color: Colors.white54),
+              _sectionTitle("صفحات المدير"),
+             
+              _buildMenuTile(context, " عرض المعلمين والطلاب", Icons.person,
+                  Color(0xFF43e97b), () {
+                Navigator.pushReplacement(context,
+                    MaterialPageRoute(builder: (_) => PeoplePage(role: role)));
+              }),
+              _buildMenuTile(
+                  context, "إضافة معلم", Icons.person_add, Color(0xFFff9a9e),
+                  () {
+                Navigator.pushReplacement(context,
+                    MaterialPageRoute(builder: (_) => AddTeacherPage(role: role)));
+              }),
+              // _buildMenuTile(
+              //     context, "إدارة المواد", Icons.book, Color(0xFFa18cd1), () {
+              //   Navigator.pushReplacement(context,
+              //       MaterialPageRoute(builder: (_) => ManageSubjectsPage()));
+              // }),
+              // _buildMenuTile(
+              //     context, "إدارة الأقسام", Icons.class_, Color(0xFFfbc2eb),
+              //     () {
+              //   Navigator.pushReplacement(context,
+              //       MaterialPageRoute(builder: (_) => ManageSectionsPage()));
+              // }),
+            ],
+
+            // --- صفحات المعلم ---
+            if (isTeacher || isAdmin) ...[
+              const Divider(color: Colors.white54),
+              _sectionTitle("صفحات المعلم"),
+              _buildMenuTile(context, "الطلاب", Icons.people, Color(0xFF4facfe),
+                  () {
+                Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => StudentPreparationPage(role: role)));
+              }),
+              _buildMenuTile(
+                  context, "إضافة درجات", Icons.add, Color(0xFFB0A7A7), () {
+                Navigator.pushReplacement(
+                    context, MaterialPageRoute(builder: (_) => AddGradePage()));
+              }),
+              _buildMenuTile(
+                  context, "المكتبة", Icons.library_books, Color(0xFFfbc2eb),
+                  () {
+                Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => SimpleLibraryPage(role: role)));
+              }),
+              _buildMenuTile(
+                  context, "الاختبارات", Icons.store, Color(0xFFffd1ff), () {
+                Navigator.pushReplacement(context,
+                    MaterialPageRoute(builder: (_) => StorePage(role: role)));
+              }),
+            ],
+
+            // --- صفحات الطالب ---
+            if (isStudent || isAdmin) ...[
+              const Divider(color: Colors.white54),
+              _sectionTitle("صفحات الطالب"),
+              _buildMenuTile(
+                  context, "المكتبة", Icons.library_books, Color(0xFFfbc2eb),
+                  () {
+                Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => SimpleLibraryPage(role: role)));
+              }),
+              _buildMenuTile(
+                  context, "الاختبارات", Icons.store, Color(0xFFffd1ff), () {
+                Navigator.pushReplacement(context,
+                    MaterialPageRoute(builder: (_) => StorePage(role: role)));
+              }),
+              _buildMenuTile(context, "معاينة الدرجات", Icons.show_chart,
+                  Color(0xFF121111), () {
+                Navigator.pushReplacement(context,
+                    MaterialPageRoute(builder: (_) => ViewGradesPage()));
+              }),
+            ],
+
+            const Divider(color: Colors.white54),
+
+            // --- تسجيل الخروج ---
+            _buildMenuTile(
+                context, "تسجيل الخروج", Icons.logout, Colors.redAccent,
+                () async {
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.clear();
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (_) => UserTypeSelectionPage()),
+                (route) => false,
+              );
+            }),
+
+            const SizedBox(height: 20),
+            _buildFooter(),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildMenuTile({
-    required String title,
-    required String svgSrc,
-    required IconData icon,
-    required Color color,
-    required VoidCallback press,
-  }) {
-    return Container(
-      margin: EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 5,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: press,
-          borderRadius: BorderRadius.circular(12),
-          child: Container(
-            padding: EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-                colors: [
-                  color.withOpacity(0.3),
-                  color.withOpacity(0.1),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.2),
-                width: 1,
-              ),
+  Widget _buildHeader() => Container(
+        height: 180,
+        alignment: Alignment.center,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: const [
+            CircleAvatar(
+              radius: 40,
+              backgroundImage: AssetImage("assets/images/logo.png"),
             ),
-            child: Row(
-              children: [
-                // الأيقونة
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        color,
-                        color.withOpacity(0.7),
-                      ],
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: color.withOpacity(0.3),
-                        blurRadius: 5,
-                        offset: Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Icon(
-                    icon,
+            SizedBox(height: 10),
+            Text("المدرسة الذكية",
+                style: TextStyle(
                     color: Colors.white,
-                    size: 20,
-                  ),
-                ),
-
-                SizedBox(width: 15),
-
-                // النص
-                Expanded(
-                  child: Text(
-                    title,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-
-                // السهم
-                Icon(
-                  Icons.arrow_left,
-                  color: Colors.white.withOpacity(0.7),
-                  size: 20,
-                ),
-              ],
-            ),
-          ),
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold)),
+          ],
         ),
+      );
+
+  Widget _buildMenuTile(BuildContext context, String title, IconData icon,
+      Color color, VoidCallback press) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: ListTile(
+        tileColor: color.withOpacity(0.15),
+        leading: Icon(icon, color: Colors.white),
+        title: Text(title,
+            style: const TextStyle(color: Colors.white, fontSize: 16)),
+        trailing:
+            Icon(Icons.arrow_forward_ios, size: 16, color: Colors.white70),
+        onTap: press,
       ),
     );
   }
-}
 
-// بديل إذا كنت تريد استخدام SVG بدلاً من الأيقونات
-class DrawerListTile extends StatelessWidget {
-  const DrawerListTile({
-    super.key,
-    required this.title,
-    required this.svgSrc,
-    required this.press,
-    required this.color,
-  });
+  Widget _sectionTitle(String title) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+        child: Text(title,
+            style: const TextStyle(
+                color: Colors.white70, fontWeight: FontWeight.bold)),
+      );
 
-  final String title, svgSrc;
-  final VoidCallback press;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: EdgeInsets.only(bottom: 8),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: press,
-          borderRadius: BorderRadius.circular(10),
-          child: Container(
-            padding: EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(10),
-              color: Colors.white.withOpacity(0.1),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: color.withOpacity(0.2),
-                  ),
-                  child: SvgPicture.asset(
-                    svgSrc,
-                    colorFilter: ColorFilter.mode(color, BlendMode.srcIn),
-                    height: 20,
-                  ),
-                ),
-                SizedBox(width: 12),
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                  ),
-                ),
-                Spacer(),
-                Icon(
-                  Icons.chevron_left,
-                  color: Colors.white.withOpacity(0.5),
-                ),
-              ],
-            ),
-          ),
+  Widget _buildFooter() => Center(
+        child: Column(
+          children: const [
+            Text("الإصدار 1.0.0",
+                style: TextStyle(color: Colors.white70, fontSize: 12)),
+            Text("© جميع الحقوق محفوظة",
+                style: TextStyle(color: Colors.white60, fontSize: 11)),
+          ],
         ),
-      ),
-    );
-  }
+      );
 }

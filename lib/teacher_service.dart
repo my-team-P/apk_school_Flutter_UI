@@ -6,7 +6,7 @@ import 'dart:convert';
 class TeacherService {
   // روابط الـ API - اختر المناسب حسب جهازك
   static const String baseUrl =
-      'http://192.168.1.102:8000/api/teachers'; // لـ Android Emulator
+      'http://192.168.1.107:8000/api/teachers'; // لـ Android Emulator
   // static const String baseUrl = 'http://localhost:8000/api'; // لـ iOS Simulator
   // static const String baseUrl = 'http://192.168.1.100:8000/api'; // لـ جهاز حقيقي - استبدل 192.168.1.100 بـ IP خادمك
 

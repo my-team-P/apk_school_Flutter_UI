@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+
+// استبدل المسارات حسب مشروعك
 import 'package:admin/screens/main/main_screen.dart';
 import 'package:admin/ques_pass.blade.dart';
 import 'package:admin/RegisterPage.dart';
@@ -16,50 +19,39 @@ class LoginApp extends StatelessWidget {
       theme: ThemeData(primarySwatch: Colors.indigo, fontFamily: 'Roboto'),
       home: const Directionality(
         textDirection: TextDirection.rtl,
-        child: LoginPage(),
+        child: LoginPage_S(),
       ),
     );
   }
 }
 
-class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+class LoginPage_S extends StatefulWidget {
+  const LoginPage_S({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  State<LoginPage_S> createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
-  final _usernameController = TextEditingController();
+class _LoginPageState extends State<LoginPage_S> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
   bool _isLoading = false;
-
-  String? _usernameError;
   String? _emailError;
   String? _passwordError;
 
   static const Color topBackgroundColor = Color.fromARGB(255, 246, 230, 204);
 
   Future<void> _login() async {
-    final username = _usernameController.text.trim();
     final email = _emailController.text.trim();
     final password = _passwordController.text;
 
-    // إعادة تعيين رسائل الخطأ
     setState(() {
-      _usernameError = null;
       _emailError = null;
       _passwordError = null;
     });
 
     bool hasError = false;
-
-    if (username.isEmpty) {
-      _usernameError = 'يرجى إدخال اسم المستخدم';
-      hasError = true;
-    }
 
     if (email.isEmpty) {
       _emailError = 'يرجى إدخال البريد الإلكتروني';
@@ -85,10 +77,9 @@ class _LoginPageState extends State<LoginPage> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://192.168.1.102:8000/api/login'), // عدل حسب سيرفرك
+        Uri.parse('http://192.168.1.107:8000/api/login/student'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'name': username,
           'email': email,
           'password': password,
         }),
@@ -100,23 +91,21 @@ class _LoginPageState extends State<LoginPage> {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data['success'] == true) {
-          // نجاح تسجيل الدخول → الانتقال للصفحة الرئيسية
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const MainScreen()),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-                content:
-                    Text(data['message'] ?? 'البريد أو كلمة المرور غير صحيحة')),
-          );
-        }
+
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('access_token', data['access_token']);
+        await prefs.setString('role', data['role']);
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => MainScreen(role: data['role']),
+          ),
+        );
       } else {
-        final error = json.decode(response.body);
+        final data = json.decode(response.body);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error['error'] ?? 'خطأ في تسجيل الدخول')),
+          SnackBar(content: Text(data['message'] ?? 'خطأ في تسجيل الدخول')),
         );
       }
     } catch (e) {
@@ -131,7 +120,6 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   void dispose() {
-    _usernameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -145,7 +133,6 @@ class _LoginPageState extends State<LoginPage> {
       backgroundColor: Colors.white,
       body: Stack(
         children: [
-          // خلفية عليا
           ClipPath(
             clipper: TopClipper(),
             child: Container(
@@ -154,7 +141,6 @@ class _LoginPageState extends State<LoginPage> {
               color: topBackgroundColor,
             ),
           ),
-          // محتوى الصفحة
           Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -177,22 +163,6 @@ class _LoginPageState extends State<LoginPage> {
                     style: TextStyle(fontSize: 16, color: Colors.grey[700]),
                   ),
                   const SizedBox(height: 32),
-
-                  // اسم المستخدم
-                  TextField(
-                    controller: _usernameController,
-                    decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.person_outline),
-                      labelText: 'اسم المستخدم',
-                      errorText: _usernameError,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      filled: true,
-                      fillColor: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
 
                   // البريد الإلكتروني
                   TextField(
@@ -228,7 +198,7 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 12),
 
-                  // روابط نسيت كلمة المرور وإنشاء حساب
+                  // نسيت كلمة المرور وإنشاء حساب
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -255,10 +225,8 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ],
                   ),
-
                   const SizedBox(height: 20),
 
-                  // زر تسجيل الدخول أو مؤشر التحميل
                   _isLoading
                       ? const CircularProgressIndicator()
                       : ElevatedButton(
@@ -275,7 +243,6 @@ class _LoginPageState extends State<LoginPage> {
                             style: TextStyle(fontSize: 18, color: Colors.white),
                           ),
                         ),
-
                   const SizedBox(height: 60),
                 ],
               ),

@@ -7,35 +7,34 @@ import 'package:provider/provider.dart';
 import 'components/side_menu.dart';
 
 class MainScreen extends StatelessWidget {
-  const MainScreen({super.key});
+  final String role;
+
+  const MainScreen({super.key, required this.role});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       key: context.read<MenuAppController>().scaffoldKey,
-      drawer: const SideMenu(),
+      drawer: SideMenu(role: role),
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        color: Colors.blueGrey[50], // خلفية رئيسية هادئة
+        color: Colors.blueGrey[50],
         child: SafeArea(
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // SideMenu ثابت في نسخة سطح المكتب
               if (Responsive.isDesktop(context))
                 Expanded(
                   child: Container(
-                    color: Colors.blueGrey[900], // لون رسمي للـSideMenu
-                    child: const SideMenu(),
+                    color: Colors.blueGrey[900],
+                    child: SideMenu(role: role),
                   ),
                 ),
-              // المحتوى الرئيسي
               Expanded(
                 flex: 5,
                 child: Column(
                   children: [
-                    // رأس الصفحة الرسمي
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 20, vertical: 16),
@@ -55,13 +54,10 @@ class MainScreen extends StatelessWidget {
                         ],
                       ),
                     ),
-                    // محتوى Dashboard يملأ المساحة المتبقية
                     Expanded(
                       child: Container(
-                        color: Color.fromARGB(
-                            255, 255, 255, 255), // اللون الأساسي من الشعار
-
-                        child: const DashboardScreen(),
+                        color: const Color(0xFFFFFFFF),
+                        child:  DashboardScreen(role: role),
                       ),
                     ),
                   ],

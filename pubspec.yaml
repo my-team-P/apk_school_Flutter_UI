@@ -27,6 +27,10 @@ dependencies:
   # path_provider: ^2.1.1
   path: ^1.8.3
   # intl: ^0.18.1
+  dio: ^5.3.3
+  permission_handler: ^11.1.0
+  shared_preferences: ^2.5.3
+
 
 dev_dependencies:
   flutter_test:

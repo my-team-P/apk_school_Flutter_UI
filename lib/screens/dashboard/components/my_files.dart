@@ -55,6 +55,7 @@ class MyFiles extends StatelessWidget {
       ],
     );
   }
+  
 }
 
 // معرض الصور الأفقية
@@ -82,6 +83,8 @@ class HorizontalImageGallery extends StatelessWidget {
   ];
 
   HorizontalImageGallery({super.key});
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -196,5 +199,8 @@ class FileInfoCardGridView extends StatelessWidget {
       ),
       itemBuilder: (context, index) => FileInfoCard(info: demoMyFiles[index]),
     );
+    
   }
+  
 }
+

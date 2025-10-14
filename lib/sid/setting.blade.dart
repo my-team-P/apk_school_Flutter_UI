@@ -4,7 +4,9 @@ import 'package:admin/a/settings_provider.dart';
 import 'package:admin/screens/main/main_screen.dart';
 
 class SettingsPage extends StatelessWidget {
-  const SettingsPage({super.key});
+  final String role; // <-- أضف هذا
+
+  const SettingsPage({super.key, required this.role});
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +29,9 @@ class SettingsPage extends StatelessWidget {
           onPressed: () {
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (_) => const MainScreen()),
+              MaterialPageRoute(
+                builder: (context) => MainScreen(role: role), // ✅ تمرير الدور
+              ),
             );
           },
         ),
@@ -327,8 +331,12 @@ class SettingsPage extends StatelessWidget {
         Expanded(
           child: ElevatedButton.icon(
             onPressed: () {
-              Navigator.pushReplacement(context,
-                  MaterialPageRoute(builder: (_) => const MainScreen()));
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => MainScreen(role: role), // ✅ تمرير الدور
+                ),
+              );
             },
             icon: const Icon(Icons.home),
             label: const Text("الصفحة الرئيسية"),

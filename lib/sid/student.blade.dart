@@ -5,7 +5,10 @@ import 'package:intl/intl.dart';
 import 'package:admin/screens/main/main_screen.dart';
 
 class StudentPreparationPage extends StatefulWidget {
-  const StudentPreparationPage({super.key});
+  final String role; // <-- أضف هذا
+
+  const StudentPreparationPage({super.key, required this.role});
+
 
   @override
   State<StudentPreparationPage> createState() => _StudentPreparationPageState();
@@ -522,10 +525,12 @@ class _StudentPreparationPageState extends State<StudentPreparationPage> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const MainScreen()),
-            );
+           Navigator.pushReplacement(
+  context,
+  MaterialPageRoute(
+    builder: (context) => MainScreen(role: widget.role), // <-- هنا
+  ),
+);
           },
         ),
         actions: [

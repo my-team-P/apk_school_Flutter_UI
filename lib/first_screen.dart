@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:admin/login.blade.dart';
 import 'package:admin/techer_login.dart';
+
 class UserTypeSelectionApp extends StatelessWidget {
   const UserTypeSelectionApp({super.key});
 
@@ -76,7 +77,7 @@ class _UserTypeSelectionPageState extends State<UserTypeSelectionPage> {
       });
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const LoginPage()),
+        MaterialPageRoute(builder: (context) => const LoginPage_S()),
       );
     });
   }
@@ -93,7 +94,7 @@ class _UserTypeSelectionPageState extends State<UserTypeSelectionPage> {
       });
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const TeacherLoginPage()),
+        MaterialPageRoute(builder: (context) => const LoginPage_T()),
       );
     });
   }

@@ -66,7 +66,7 @@ class MyApp extends StatelessWidget {
                   scaffoldBackgroundColor: Colors.grey[50],
                 ),
           locale: Locale(settings.language == "English" ? "en" : "ar"),
-          home: const UserTypeSelectionApp(), // أو أي شاشة أولية تريدها
+          home: const UserTypeSelectionPage(), // أو أي شاشة أولية تريدها
         );
       },
     );

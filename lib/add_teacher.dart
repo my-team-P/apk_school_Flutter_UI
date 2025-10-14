@@ -5,13 +5,14 @@ import 'dart:io';
 import 'teacher_service.dart'; // تأكد من أن الملف في المسار الصحيح
 
 class AddTeacherPage extends StatefulWidget {
-  const AddTeacherPage({super.key});
+  final String role; // إضافة متغير role
+  const AddTeacherPage({super.key, required this.role});
 
   @override
-  _AddTeacherPageState createState() => _AddTeacherPageState();
+  AddTeacherPageState createState() => AddTeacherPageState();
 }
 
-class _AddTeacherPageState extends State<AddTeacherPage> {
+class AddTeacherPageState extends State<AddTeacherPage> {
   final _formKey = GlobalKey<FormState>();
   late TeacherService _teacherService;
   late ImagePicker _picker;
@@ -20,7 +21,7 @@ class _AddTeacherPageState extends State<AddTeacherPage> {
   File? _selectedImage;
   String _fullName = '';
   String _specialization = '';
-  String _password = ''; // ✅ تمت الإضافة
+  String _password = '';
   String _phone = '';
   String _email = '';
   String _hireDate = '';
@@ -76,7 +77,8 @@ class _AddTeacherPageState extends State<AddTeacherPage> {
             onPressed: () {
               Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(builder: (context) => MainScreen()),
+                MaterialPageRoute(
+                    builder: (context) => MainScreen(role: widget.role)),
               );
             }),
       ),
@@ -96,7 +98,7 @@ class _AddTeacherPageState extends State<AddTeacherPage> {
               SizedBox(height: 16),
               _buildEmailField(),
               SizedBox(height: 16),
-              _buildPasswordField(), // ✅ تمت الإضافة هنا
+              _buildPasswordField(),
               SizedBox(height: 16),
               _buildPhoneField(),
               SizedBox(height: 16),
@@ -114,7 +116,107 @@ class _AddTeacherPageState extends State<AddTeacherPage> {
     );
   }
 
-  // ✅ حقل كلمة المرور الجديد
+  // بقيّة الدوال تبقى كما هي مع تعديل navigator لاستخدام widget.role
+
+  Widget _buildSubmitButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 56,
+      child: ElevatedButton(
+        onPressed: _submitForm,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.blue[700],
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+        child: Text('حفظ بيانات المعلم',
+            style: TextStyle(fontSize: 18, color: Colors.white)),
+      ),
+    );
+  }
+
+  Future<void> _submitForm() async {
+    if (_formKey.currentState!.validate()) {
+      _formKey.currentState!.save();
+
+      _showLoadingDialog();
+
+      try {
+        Map<String, dynamic> teacherData = {
+          'full_name': _fullName,
+          'specialization': _specialization,
+          'password': _password,
+          'phone': _phone.isEmpty ? null : _phone,
+          'email': _email,
+          'hire_date': _hireDate.isEmpty ? null : _hireDate,
+          'salary': _salary.isEmpty ? null : _salary,
+          'qualification': _qualification.isEmpty ? null : _qualification,
+          'is_active': _isActive ? 1 : 0,
+        };
+
+        bool success =
+            await _teacherService.addTeacher(teacherData, _selectedImage);
+
+        Navigator.pop(context);
+
+        success
+            ? _showSuccessDialog()
+            : _showErrorDialog('فشل في إضافة المعلم. يرجى المحاولة مرة أخرى.');
+      } catch (e) {
+        Navigator.pop(context);
+        _showErrorDialog('حدث خطأ: $e');
+      }
+    }
+  }
+
+  void _showSuccessDialog() => showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.green),
+              SizedBox(width: 8),
+              Text('تمت العملية', style: TextStyle(color: Colors.green)),
+            ],
+          ),
+          content: Text('تم إضافة المعلم بنجاح'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => MainScreen(role: widget.role)),
+                );
+              },
+              child: Text('موافق', style: TextStyle(color: Colors.blue[700])),
+            ),
+          ],
+        ),
+      );
+
+  void _showErrorDialog(String message) => showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.error, color: Colors.red),
+              SizedBox(width: 8),
+              Text('خطأ', style: TextStyle(color: Colors.red)),
+            ],
+          ),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('موافق', style: TextStyle(color: Colors.blue[700])),
+            ),
+          ],
+        ),
+      );
+
+  // باقي الدوال مثل _pickImage, _selectDate تبقى كما هي
+
   Widget _buildPasswordField() {
     return TextFormField(
       decoration: InputDecoration(
@@ -325,23 +427,6 @@ class _AddTeacherPageState extends State<AddTeacherPage> {
     );
   }
 
-  Widget _buildSubmitButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: 56,
-      child: ElevatedButton(
-        onPressed: _submitForm,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.blue[700],
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-        child: Text('حفظ بيانات المعلم',
-            style: TextStyle(fontSize: 18, color: Colors.white)),
-      ),
-    );
-  }
-
   Future<void> _pickImage() async {
     final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
     if (image != null) setState(() => _selectedImage = File(image.path));
@@ -362,40 +447,6 @@ class _AddTeacherPageState extends State<AddTeacherPage> {
     }
   }
 
-  Future<void> _submitForm() async {
-    if (_formKey.currentState!.validate()) {
-      _formKey.currentState!.save();
-
-      _showLoadingDialog();
-
-      try {
-        Map<String, dynamic> teacherData = {
-          'full_name': _fullName,
-          'specialization': _specialization,
-          'password': _password, // ✅ تمت الإضافة هنا
-          'phone': _phone.isEmpty ? null : _phone,
-          'email': _email,
-          'hire_date': _hireDate.isEmpty ? null : _hireDate,
-          'salary': _salary.isEmpty ? null : _salary,
-          'qualification': _qualification.isEmpty ? null : _qualification,
-          'is_active': _isActive ? 1 : 0,
-        };
-
-        bool success =
-            await _teacherService.addTeacher(teacherData, _selectedImage);
-
-        Navigator.pop(context);
-
-        success
-            ? _showSuccessDialog()
-            : _showErrorDialog('فشل في إضافة المعلم. يرجى المحاولة مرة أخرى.');
-      } catch (e) {
-        Navigator.pop(context);
-        _showErrorDialog('حدث خطأ: $e');
-      }
-    }
-  }
-
   void _showLoadingDialog() => showDialog(
         context: context,
         barrierDismissible: false,
@@ -411,48 +462,6 @@ class _AddTeacherPageState extends State<AddTeacherPage> {
               ],
             ),
           ),
-        ),
-      );
-
-  void _showSuccessDialog() => showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Row(
-            children: [
-              Icon(Icons.check_circle, color: Colors.green),
-              SizedBox(width: 8),
-              Text('تمت العملية', style: TextStyle(color: Colors.green)),
-            ],
-          ),
-          content: Text('تم إضافة المعلم بنجاح'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.popUntil(context, (route) => route.isFirst);
-              },
-              child: Text('موافق', style: TextStyle(color: Colors.blue[700])),
-            ),
-          ],
-        ),
-      );
-
-  void _showErrorDialog(String message) => showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Row(
-            children: [
-              Icon(Icons.error, color: Colors.red),
-              SizedBox(width: 8),
-              Text('خطأ', style: TextStyle(color: Colors.red)),
-            ],
-          ),
-          content: Text(message),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('موافق', style: TextStyle(color: Colors.blue[700])),
-            ),
-          ],
         ),
       );
 }
