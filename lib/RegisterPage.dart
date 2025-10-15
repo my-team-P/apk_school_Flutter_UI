@@ -18,9 +18,49 @@ class _RegisterPageState extends State<RegisterPage> {
   bool _obscurePassword = true;
   final _formKey = GlobalKey<FormState>();
 
+  // متغيرات الصفوف
+  List<Map<String, dynamic>> _classes = [];
+  Map<String, dynamic>? _selectedClass;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchClasses();
+  }
+
+  // جلب الصفوف من السيرفر
+  Future<void> _fetchClasses() async {
+    try {
+      final response = await http.get(
+        Uri.parse('http://192.168.1.107:8000/api/classes'),
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        setState(() {
+          _classes = List<Map<String, dynamic>>.from(data['classes']);
+        });
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('فشل جلب الصفوف')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تعذر الاتصال بالسيرفر')),
+      );
+    }
+  }
+
   // دالة التسجيل
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
+
+    if (_selectedClass == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('يرجى اختيار الصف')),
+      );
+      return;
+    }
 
     setState(() {
       _isLoading = true;
@@ -33,6 +73,7 @@ class _RegisterPageState extends State<RegisterPage> {
           'name': _nameController.text,
           'email': _emailController.text,
           'password': _passwordController.text,
+          'grade_id': _selectedClass!['id'].toString(),
         },
       );
 
@@ -41,7 +82,6 @@ class _RegisterPageState extends State<RegisterPage> {
       });
 
       if (response.statusCode == 201 || response.statusCode == 200) {
-        // تسجيل ناجح
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('تم إنشاء الحساب بنجاح!'),
@@ -50,13 +90,11 @@ class _RegisterPageState extends State<RegisterPage> {
           ),
         );
 
-        // الانتقال إلى صفحة تسجيل الدخول
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const LoginPage_S()),
         );
       } else {
-        // الحصول على رسالة الخطأ من السيرفر
         final error = json.decode(response.body);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -81,33 +119,21 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   String? _validateEmail(String? value) {
-    if (value == null || value.isEmpty) {
-      return 'الرجاء إدخال البريد الإلكتروني';
-    }
+    if (value == null || value.isEmpty) return 'الرجاء إدخال البريد الإلكتروني';
     final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-    if (!emailRegex.hasMatch(value)) {
-      return 'الرجاء إدخال بريد إلكتروني صحيح';
-    }
+    if (!emailRegex.hasMatch(value)) return 'الرجاء إدخال بريد إلكتروني صحيح';
     return null;
   }
 
   String? _validatePassword(String? value) {
-    if (value == null || value.isEmpty) {
-      return 'الرجاء إدخال كلمة المرور';
-    }
-    if (value.length < 6) {
-      return 'كلمة المرور يجب أن تكون 6 أحرف على الأقل';
-    }
+    if (value == null || value.isEmpty) return 'الرجاء إدخال كلمة المرور';
+    if (value.length < 6) return 'كلمة المرور يجب أن تكون 6 أحرف على الأقل';
     return null;
   }
 
   String? _validateName(String? value) {
-    if (value == null || value.isEmpty) {
-      return 'الرجاء إدخال الاسم';
-    }
-    if (value.length < 2) {
-      return 'الاسم يجب أن يكون حرفين على الأقل';
-    }
+    if (value == null || value.isEmpty) return 'الرجاء إدخال الاسم';
+    if (value.length < 2) return 'الاسم يجب أن يكون حرفين على الأقل';
     return null;
   }
 
@@ -123,8 +149,7 @@ class _RegisterPageState extends State<RegisterPage> {
               padding: const EdgeInsets.all(24.0),
               child: ConstrainedBox(
                 constraints: BoxConstraints(
-                  minHeight:
-                      constraints.maxHeight - 48, // 48 = padding top+bottom
+                  minHeight: constraints.maxHeight - 48,
                 ),
                 child: IntrinsicHeight(
                   child: Form(
@@ -157,10 +182,7 @@ class _RegisterPageState extends State<RegisterPage> {
                             color: Colors.white,
                           ),
                         ),
-
                         const SizedBox(height: 30),
-
-                        // عنوان الصفحة
                         const Text(
                           'إنشاء حساب جديد',
                           style: TextStyle(
@@ -169,9 +191,7 @@ class _RegisterPageState extends State<RegisterPage> {
                             color: Color(0xFF2D3748),
                           ),
                         ),
-
                         const SizedBox(height: 10),
-
                         const Text(
                           'املأ البيانات التالية لإنشاء حسابك',
                           style: TextStyle(
@@ -180,10 +200,9 @@ class _RegisterPageState extends State<RegisterPage> {
                           ),
                           textAlign: TextAlign.center,
                         ),
-
                         const SizedBox(height: 40),
 
-                        // حقل الاسم
+                        // الاسم
                         TextFormField(
                           controller: _nameController,
                           decoration: InputDecoration(
@@ -198,27 +217,12 @@ class _RegisterPageState extends State<RegisterPage> {
                             ),
                             filled: true,
                             fillColor: Colors.white,
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(15),
-                              borderSide: const BorderSide(
-                                  color: Color(0xFF667EEA), width: 2),
-                            ),
-                            errorBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(15),
-                              borderSide:
-                                  const BorderSide(color: Colors.red, width: 1),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(15),
-                              borderSide: BorderSide.none,
-                            ),
                           ),
                           validator: _validateName,
                         ),
-
                         const SizedBox(height: 16),
 
-                        // حقل البريد الإلكتروني
+                        // البريد الإلكتروني
                         TextFormField(
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
@@ -234,27 +238,12 @@ class _RegisterPageState extends State<RegisterPage> {
                             ),
                             filled: true,
                             fillColor: Colors.white,
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(15),
-                              borderSide: const BorderSide(
-                                  color: Color(0xFF667EEA), width: 2),
-                            ),
-                            errorBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(15),
-                              borderSide:
-                                  const BorderSide(color: Colors.red, width: 1),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(15),
-                              borderSide: BorderSide.none,
-                            ),
                           ),
                           validator: _validateEmail,
                         ),
-
                         const SizedBox(height: 16),
 
-                        // حقل كلمة المرور
+                        // كلمة المرور
                         TextFormField(
                           controller: _passwordController,
                           obscureText: _obscurePassword,
@@ -283,24 +272,37 @@ class _RegisterPageState extends State<RegisterPage> {
                             ),
                             filled: true,
                             fillColor: Colors.white,
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(15),
-                              borderSide: const BorderSide(
-                                  color: Color(0xFF667EEA), width: 2),
-                            ),
-                            errorBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(15),
-                              borderSide:
-                                  const BorderSide(color: Colors.red, width: 1),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(15),
-                              borderSide: BorderSide.none,
-                            ),
                           ),
                           validator: _validatePassword,
                         ),
+                        const SizedBox(height: 16),
 
+                        // اختيار الصف
+                        _classes.isEmpty
+                            ? const CircularProgressIndicator()
+                            : DropdownButtonFormField<Map<String, dynamic>>(
+                                decoration: InputDecoration(
+                                  labelText: 'اختر الصف',
+                                  prefixIcon: const Icon(Icons.class_,
+                                      color: Color(0xFF667EEA)),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(15),
+                                  ),
+                                  filled: true,
+                                  fillColor: Colors.white,
+                                ),
+                                items: _classes
+                                    .map((cls) => DropdownMenuItem(
+                                          value: cls,
+                                          child: Text(cls['grade_name']),
+                                        ))
+                                    .toList(),
+                                value: _selectedClass,
+                                onChanged: (value) =>
+                                    setState(() => _selectedClass = value),
+                                validator: (value) =>
+                                    value == null ? 'يرجى اختيار الصف' : null,
+                              ),
                         const SizedBox(height: 30),
 
                         // زر التسجيل
@@ -308,84 +310,27 @@ class _RegisterPageState extends State<RegisterPage> {
                           width: double.infinity,
                           height: 56,
                           child: _isLoading
-                              ? Container(
-                                  decoration: BoxDecoration(
-                                    gradient: const LinearGradient(
-                                      colors: [
-                                        Color(0xFF667EEA),
-                                        Color(0xFF764BA2)
-                                      ],
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                    ),
-                                    borderRadius: BorderRadius.circular(15),
-                                  ),
-                                  child: const Center(
-                                    child: CircularProgressIndicator(
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                          Colors.white),
-                                      strokeWidth: 3,
-                                    ),
-                                  ),
-                                )
+                              ? const Center(child: CircularProgressIndicator())
                               : ElevatedButton(
                                   onPressed: _register,
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.transparent,
-                                    foregroundColor: Colors.white,
-                                    shadowColor: Colors.transparent,
+                                    backgroundColor: const Color(0xFF667EEA),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(15),
                                     ),
-                                    padding: const EdgeInsets.all(2),
                                   ),
-                                  child: Ink(
-                                    decoration: BoxDecoration(
-                                      gradient: const LinearGradient(
-                                        colors: [
-                                          Color(0xFF667EEA),
-                                          Color(0xFF764BA2)
-                                        ],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      ),
-                                      borderRadius: BorderRadius.circular(15),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.purple.shade300,
-                                          blurRadius: 10,
-                                          offset: const Offset(0, 5),
-                                        ),
-                                      ],
-                                    ),
-                                    child: Container(
-                                      width: double.infinity,
-                                      height: 56,
-                                      alignment: Alignment.center,
-                                      child: const Text(
-                                        'إنشاء حساب',
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
+                                  child: const Text('إنشاء حساب',
+                                      style: TextStyle(fontSize: 18)),
                                 ),
                         ),
-
                         const SizedBox(height: 20),
 
-                        // رابط الانتقال لصفحة تسجيل الدخول
+                        // رابط تسجيل الدخول
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Text(
-                              'هل لديك حساب بالفعل؟',
-                              style: TextStyle(
-                                color: Color(0xFF718096),
-                              ),
-                            ),
+                            const Text('هل لديك حساب بالفعل؟',
+                                style: TextStyle(color: Color(0xFF718096))),
                             const SizedBox(width: 8),
                             GestureDetector(
                               onTap: () {
@@ -396,30 +341,12 @@ class _RegisterPageState extends State<RegisterPage> {
                                           const LoginPage_S()),
                                 );
                               },
-                              child: const Text(
-                                'تسجيل الدخول',
-                                style: TextStyle(
-                                  color: Color(0xFF667EEA),
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
+                              child: const Text('تسجيل الدخول',
+                                  style: TextStyle(
+                                      color: Color(0xFF667EEA),
+                                      fontWeight: FontWeight.bold)),
                             ),
                           ],
-                        ),
-
-                        // مساحة مرنة للتكيف مع الشاشات المختلفة
-                        const Expanded(child: SizedBox()),
-
-                        // نص حقوق النشر
-                        const Padding(
-                          padding: EdgeInsets.only(top: 20, bottom: 10),
-                          child: Text(
-                            '© 2024 جميع الحقوق محفوظة',
-                            style: TextStyle(
-                              color: Color(0xFFA0AEC0),
-                              fontSize: 12,
-                            ),
-                          ),
                         ),
                       ],
                     ),

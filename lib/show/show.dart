@@ -29,8 +29,8 @@ class PeoplePageState extends State<PeoplePage> {
     });
 
     String apiUrl = selectedType == 'teachers'
-        ? 'http://192.168.1.102:8000/api/teachers'
-        : 'http://192.168.1.102:8000/api/students';
+        ? 'http://192.168.1.107:8000/api/teachers'
+        : 'http://192.168.1.107:8000/api/students';
 
     try {
       final url = Uri.parse(apiUrl);

@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:admin/screens/main/main_screen.dart';
 
 class ViewGradesPage extends StatefulWidget {
-  const ViewGradesPage({super.key});
+  final String role;
+
+  const ViewGradesPage({super.key, required this.role});
 
   @override
   State<ViewGradesPage> createState() => _ViewGradesPageState();
@@ -14,15 +18,23 @@ class _ViewGradesPageState extends State<ViewGradesPage> {
   List<dynamic> _students = [];
   List<dynamic> _filteredGrades = [];
   String? _selectedStudentId;
+  String? _currentStudentId;
   bool _isLoading = true;
   String? _errorMessage;
 
-  final String _baseUrl = 'http://192.168.1.102:8000/api';
+  final String _baseUrl = 'http://192.168.1.107:8000/api';
 
   @override
   void initState() {
     super.initState();
-    _loadData();
+    _loadCurrentStudent().then((_) => _loadData());
+  }
+
+  Future<void> _loadCurrentStudent() async {
+    if (widget.role == 'student') {
+      final prefs = await SharedPreferences.getInstance();
+      _currentStudentId = prefs.getInt('user_id')?.toString();
+    }
   }
 
   Future<void> _loadData() async {
@@ -37,9 +49,6 @@ class _ViewGradesPageState extends State<ViewGradesPage> {
         http.get(Uri.parse("$_baseUrl/students")),
       ]);
 
-      print('Grades Status: ${gradesResponse.statusCode}');
-      print('Students Status: ${studentsResponse.statusCode}');
-
       if (studentsResponse.statusCode == 200) {
         final studentsData = json.decode(studentsResponse.body);
         setState(() {
@@ -47,9 +56,6 @@ class _ViewGradesPageState extends State<ViewGradesPage> {
               ? studentsData
               : studentsData['data'] ?? studentsData['students'] ?? [];
         });
-      } else {
-        print('Students API Error: ${studentsResponse.body}');
-        throw Exception('فشل في تحميل بيانات الطلاب');
       }
 
       if (gradesResponse.statusCode == 200) {
@@ -58,57 +64,36 @@ class _ViewGradesPageState extends State<ViewGradesPage> {
           _grades = gradesData is List
               ? gradesData
               : gradesData['data'] ?? gradesData['grades'] ?? [];
-          _filteredGrades = _grades;
+          _filterGrades();
         });
       } else {
-        print('Grades API Error: ${gradesResponse.body}');
-        if (gradesResponse.statusCode == 500) {
-          setState(() {
-            _grades = [];
-            _filteredGrades = [];
-          });
-          _showErrorSnackBar('لا توجد درجات مسجلة بعد أو هناك مشكلة في الخادم');
-        } else {
-          throw Exception('فشل في تحميل بيانات الدرجات');
-        }
+        throw Exception('فشل في تحميل بيانات الدرجات');
       }
-
-      print('Loaded ${_grades.length} grades, ${_students.length} students');
     } catch (e) {
-      print('Error loading data: $e');
       setState(() {
         _errorMessage = e.toString();
       });
-      _showErrorSnackBar('خطأ في تحميل البيانات: $e');
     } finally {
       setState(() => _isLoading = false);
     }
   }
 
   void _filterGrades() {
-    if (_selectedStudentId == null) {
-      setState(() {
-        _filteredGrades = _grades;
-      });
+    if (widget.role == 'student') {
+      // الطالب يرى درجاته فقط
+      _filteredGrades = _grades.where((grade) {
+        return grade['student_id']?.toString() == _currentStudentId;
+      }).toList();
     } else {
-      setState(() {
+      // المعلم أو المدير يرى كل الطلاب أو حسب Dropdown
+      if (_selectedStudentId == null) {
+        _filteredGrades = _grades;
+      } else {
         _filteredGrades = _grades.where((grade) {
-          final studentId = grade['student_id']?.toString();
-          return studentId == _selectedStudentId;
+          return grade['student_id']?.toString() == _selectedStudentId;
         }).toList();
-      });
-    }
-  }
-
-  void _showErrorSnackBar(String message) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 4),
-        ),
-      );
+      }
+      print(_grades);
     }
   }
 
@@ -171,13 +156,19 @@ class _ViewGradesPageState extends State<ViewGradesPage> {
         foregroundColor: Colors.white,
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => MainScreen(role: widget.role),
+              ),
+            );
+          },
         ),
         actions: [
           IconButton(
             icon: Icon(Icons.refresh),
             onPressed: _loadData,
-            tooltip: "تحديث البيانات",
           ),
         ],
       ),
@@ -187,7 +178,7 @@ class _ViewGradesPageState extends State<ViewGradesPage> {
               ? _buildErrorWidget()
               : Column(
                   children: [
-                    _buildStudentFilter(),
+                    if (widget.role != 'student') _buildStudentFilter(),
                     _buildStatistics(),
                     Expanded(child: _buildGradesList()),
                   ],
@@ -228,52 +219,31 @@ class _ViewGradesPageState extends State<ViewGradesPage> {
       elevation: 2,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.filter_list, color: Colors.blue),
-                SizedBox(width: 8),
-                Text(
-                  "فلتر الدرجات حسب الطالب",
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.blue[700],
-                  ),
-                ),
-              ],
+        child: DropdownButtonFormField<String>(
+          decoration: InputDecoration(
+            labelText: "اختر الطالب",
+            border: OutlineInputBorder(),
+            prefixIcon: Icon(Icons.person),
+          ),
+          value: _selectedStudentId,
+          items: [
+            DropdownMenuItem(
+              value: null,
+              child: Text("جميع الطلاب", style: TextStyle(color: Colors.blue)),
             ),
-            SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              decoration: InputDecoration(
-                labelText: "اختر الطالب",
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.person),
-              ),
-              value: _selectedStudentId,
-              items: [
-                DropdownMenuItem(
-                  value: null,
-                  child:
-                      Text("جميع الطلاب", style: TextStyle(color: Colors.blue)),
-                ),
-                ..._students.map((student) {
-                  final studentId = student['id']?.toString();
-                  final studentName = _getStudentName(student);
-                  return DropdownMenuItem(
-                    value: studentId,
-                    child: Text(studentName),
-                  );
-                }),
-              ],
-              onChanged: (v) {
-                setState(() => _selectedStudentId = v);
-                _filterGrades();
-              },
-            ),
+            ..._students.map((student) {
+              final studentId = student['id']?.toString();
+              final studentName = _getStudentName(student);
+              return DropdownMenuItem(
+                value: studentId,
+                child: Text(studentName),
+              );
+            }),
           ],
+          onChanged: (v) {
+            setState(() => _selectedStudentId = v);
+            _filterGrades();
+          },
         ),
       ),
     );
@@ -283,16 +253,13 @@ class _ViewGradesPageState extends State<ViewGradesPage> {
     double averagePercentage = 0;
     final totalGrades = _filteredGrades.length;
     if (_filteredGrades.isNotEmpty) {
-      averagePercentage = _filteredGrades
-              .map((grade) {
-                final score =
-                    double.tryParse(grade['score']?.toString() ?? '0') ?? 0;
-                final totalScore =
-                    double.tryParse(grade['total_score']?.toString() ?? '0') ??
-                        0;
-                return _calculatePercentage(score, totalScore);
-              })
-              .reduce((a, b) => a + b) /
+      averagePercentage = _filteredGrades.map((grade) {
+            final score =
+                double.tryParse(grade['score']?.toString() ?? '0') ?? 0;
+            final totalScore =
+                double.tryParse(grade['total_score']?.toString() ?? '0') ?? 0;
+            return _calculatePercentage(score, totalScore);
+          }).reduce((a, b) => a + b) /
           totalGrades;
     }
 
@@ -304,12 +271,18 @@ class _ViewGradesPageState extends State<ViewGradesPage> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            _buildStatItem(
-                Icons.assignment, 'عدد الدرجات', totalGrades.toString(), Colors.blue),
+            _buildStatItem(Icons.assignment, 'عدد الدرجات',
+                totalGrades.toString(), Colors.blue),
             _buildStatItem(Icons.percent, 'متوسط النسبة',
                 '${averagePercentage.toStringAsFixed(1)}%', Colors.green),
-            _buildStatItem(Icons.person, 'عدد الطلاب',
-                _selectedStudentId == null ? _students.length.toString() : '1',
+            _buildStatItem(
+                Icons.person,
+                'عدد الطلاب',
+                widget.role == 'student'
+                    ? '1'
+                    : _selectedStudentId == null
+                        ? _students.length.toString()
+                        : '1',
                 Colors.orange),
           ],
         ),
@@ -317,7 +290,8 @@ class _ViewGradesPageState extends State<ViewGradesPage> {
     );
   }
 
-  Widget _buildStatItem(IconData icon, String title, String value, Color color) {
+  Widget _buildStatItem(
+      IconData icon, String title, String value, Color color) {
     return Column(
       children: [
         Icon(icon, color: color, size: 30),
@@ -326,7 +300,8 @@ class _ViewGradesPageState extends State<ViewGradesPage> {
         SizedBox(height: 4),
         Text(
           value,
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color),
+          style: TextStyle(
+              fontSize: 16, fontWeight: FontWeight.bold, color: color),
         ),
       ],
     );
@@ -341,16 +316,10 @@ class _ViewGradesPageState extends State<ViewGradesPage> {
             Icon(Icons.assignment, size: 60, color: Colors.grey),
             SizedBox(height: 16),
             Text(
-              _selectedStudentId == null
-                  ? "لا توجد درجات مسجلة بعد"
-                  : "لا توجد درجات لهذا الطالب",
+              widget.role == 'student'
+                  ? "لا توجد درجات لك بعد"
+                  : "لا توجد درجات مسجلة بعد",
               style: TextStyle(fontSize: 16, color: Colors.grey),
-            ),
-            SizedBox(height: 8),
-            Text(
-              "استخدم صفحة 'إضافة درجة' لتسجيل الدرجات الأولى",
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14, color: Colors.grey[500]),
             ),
           ],
         ),
@@ -400,7 +369,7 @@ class _ViewGradesPageState extends State<ViewGradesPage> {
                         ],
                       ),
                     ),
-                    if (_selectedStudentId == null)
+                    if (widget.role != 'student')
                       Container(
                         padding:
                             EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -410,7 +379,8 @@ class _ViewGradesPageState extends State<ViewGradesPage> {
                         ),
                         child: Text(
                           _getStudentName(grade['student'] ?? {}),
-                          style: TextStyle(fontSize: 12, color: Colors.blue[700]),
+                          style:
+                              TextStyle(fontSize: 12, color: Colors.blue[700]),
                         ),
                       ),
                   ],
@@ -419,7 +389,8 @@ class _ViewGradesPageState extends State<ViewGradesPage> {
                 Row(
                   children: [
                     _buildGradeItem('الدرجة', '$score/$totalScore'),
-                    _buildGradeItem('النسبة', '${percentage.toStringAsFixed(1)}%'),
+                    _buildGradeItem(
+                        'النسبة', '${percentage.toStringAsFixed(1)}%'),
                     _buildGradeItem('نوع الاختبار', examType),
                   ],
                 ),
@@ -455,7 +426,10 @@ class _ViewGradesPageState extends State<ViewGradesPage> {
           SizedBox(height: 4),
           Text(
             value,
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.blue[700]),
+            style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Colors.blue[700]),
           ),
         ],
       ),

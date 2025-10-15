@@ -9,7 +9,6 @@ class StudentPreparationPage extends StatefulWidget {
 
   const StudentPreparationPage({super.key, required this.role});
 
-
   @override
   State<StudentPreparationPage> createState() => _StudentPreparationPageState();
 }
@@ -27,7 +26,7 @@ class _StudentPreparationPageState extends State<StudentPreparationPage> {
   bool _isSaving = false;
   String? _errorMessage;
 
-  final String _baseUrl = 'http://192.168.1.102:8000/api';
+  final String _baseUrl = 'http://192.168.1.107:8000/api';
   DateTime _selectedDate = DateTime.now();
 
   // تخزين بيانات الحضور والسلوك لكل طالب
@@ -53,7 +52,7 @@ class _StudentPreparationPageState extends State<StudentPreparationPage> {
       await _loadStudents();
     } catch (e) {
       setState(() => _errorMessage = 'خطأ في تحميل البيانات: $e');
-      print('❌ خطأ عام في تحميل البيانات: $e');
+      print(' خطأ عام في تحميل البيانات: $e');
       _loadSampleData();
     } finally {
       setState(() => _isLoading = false);
@@ -63,8 +62,8 @@ class _StudentPreparationPageState extends State<StudentPreparationPage> {
   Future<void> _loadClasses() async {
     try {
       final response = await http.get(Uri.parse("$_baseUrl/classes"));
-      print('📡 استجابة الصفوف: ${response.statusCode}');
-      print('📄 محتوى الصفوف: ${response.body}');
+      print(' استجابة الصفوف: ${response.statusCode}');
+      print(' محتوى الصفوف: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = json.decode(utf8.decode(response.bodyBytes));
@@ -86,14 +85,14 @@ class _StudentPreparationPageState extends State<StudentPreparationPage> {
           _classes = [];
         }
 
-        print('✅ تم تحميل ${_classes.length} صف');
-        print('📋 قائمة الصفوف: $_classes');
+        print(' تم تحميل ${_classes.length} صف');
+        print(' قائمة الصفوف: $_classes');
       } else {
-        print('❌ خطأ في تحميل الصفوف: ${response.statusCode}');
+        print(' خطأ في تحميل الصفوف: ${response.statusCode}');
         _classes = [];
       }
     } catch (e) {
-      print('❌ استثناء في تحميل الصفوف: $e');
+      print(' استثناء في تحميل الصفوف: $e');
       _classes = [];
     }
   }
@@ -101,12 +100,12 @@ class _StudentPreparationPageState extends State<StudentPreparationPage> {
   Future<void> _loadSections() async {
     try {
       final response = await http.get(Uri.parse("$_baseUrl/sections"));
-      print('📡 استجابة الشعب: ${response.statusCode}');
-      print('📄 محتوى الشعب: ${response.body}');
+      print(' استجابة الشعب: ${response.statusCode}');
+      print(' محتوى الشعب: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = json.decode(utf8.decode(response.bodyBytes));
-        print('🔍 هيكل بيانات الشعب: ${data.runtimeType}');
+        print(' هيكل بيانات الشعب: ${data.runtimeType}');
 
         // معالجة هيكل البيانات المختلف
         if (data is Map<String, dynamic>) {
@@ -123,14 +122,14 @@ class _StudentPreparationPageState extends State<StudentPreparationPage> {
           _sections = [];
         }
 
-        print('✅ تم تحميل ${_sections.length} شعبة');
-        print('📋 قائمة الشعب: $_sections');
+        print(' تم تحميل ${_sections.length} شعبة');
+        print(' قائمة الشعب: $_sections');
       } else {
-        print('❌ خطأ في تحميل الشعب: ${response.statusCode}');
+        print(' خطأ في تحميل الشعب: ${response.statusCode}');
         _sections = [];
       }
     } catch (e) {
-      print('❌ استثناء في تحميل الشعب: $e');
+      print(' استثناء في تحميل الشعب: $e');
       _sections = [];
     }
   }
@@ -138,12 +137,12 @@ class _StudentPreparationPageState extends State<StudentPreparationPage> {
   Future<void> _loadStudents() async {
     try {
       final response = await http.get(Uri.parse("$_baseUrl/students"));
-      print('📡 استجابة الطلاب: ${response.statusCode}');
-      print('📄 محتوى الطلاب: ${response.body}');
+      print(' استجابة الطلاب: ${response.statusCode}');
+      print(' محتوى الطلاب: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = json.decode(utf8.decode(response.bodyBytes));
-        print('🔍 هيكل بيانات الطلاب: ${data.runtimeType}');
+        print(' هيكل بيانات الطلاب: ${data.runtimeType}');
 
         // معالجة هيكل البيانات المختلف
         if (data is Map<String, dynamic>) {
@@ -169,13 +168,13 @@ class _StudentPreparationPageState extends State<StudentPreparationPage> {
           _behaviorStatus[studentId] = 'منتظم';
           _notes[studentId] = '';
         }
-        print('✅ تم تحميل ${_students.length} طالب');
+        print(' تم تحميل ${_students.length} طالب');
       } else {
-        print('❌ خطأ في تحميل الطلاب: ${response.statusCode}');
+        print(' خطأ في تحميل الطلاب: ${response.statusCode}');
         _loadSampleData();
       }
     } catch (e) {
-      print('❌ استثناء في تحميل الطلاب: $e');
+      print(' استثناء في تحميل الطلاب: $e');
       _loadSampleData();
     }
   }
@@ -192,7 +191,7 @@ class _StudentPreparationPageState extends State<StudentPreparationPage> {
       }
       return 0;
     } catch (e) {
-      print('❌ خطأ في استخراج ID الطالب: $e');
+      print(' خطأ في استخراج ID الطالب: $e');
       return 0;
     }
   }
@@ -244,7 +243,7 @@ class _StudentPreparationPageState extends State<StudentPreparationPage> {
   }
 
   void _loadSampleData() {
-    print('🔄 تحميل بيانات تجريبية...');
+    print(' تحميل بيانات تجريبية...');
 
     _classes = [
       {'id': 1, 'class_name': 'الصف الأول', 'grade_name': 'الصف الأول'},
@@ -273,7 +272,7 @@ class _StudentPreparationPageState extends State<StudentPreparationPage> {
     }
 
     _errorMessage = 'تم تحميل بيانات تجريبية للاختبار';
-    print('✅ تم تحميل بيانات تجريبية: ${_students.length} طالب');
+    print(' تم تحميل بيانات تجريبية: ${_students.length} طالب');
   }
 
   void _filterStudents() {
@@ -289,7 +288,7 @@ class _StudentPreparationPageState extends State<StudentPreparationPage> {
       return matchesClass && matchesSection;
     }).toList();
 
-    print('🔍 تم تصفية الطلاب: ${_filteredStudents.length} طالب');
+    print(' تم تصفية الطلاب: ${_filteredStudents.length} طالب');
   }
 
   Future<void> _pickDate() async {
@@ -327,7 +326,7 @@ class _StudentPreparationPageState extends State<StudentPreparationPage> {
           'notes': _notes[studentId] ?? '',
         };
 
-        print('📤 إرسال بيانات الطالب $studentId: $payload');
+        print(' إرسال بيانات الطالب $studentId: $payload');
 
         try {
           final response = await http.post(
@@ -346,11 +345,11 @@ class _StudentPreparationPageState extends State<StudentPreparationPage> {
           } else {
             errorCount++;
             final errorBody = json.decode(response.body);
-            print('❌ فشل في حفظ بيانات الطالب $studentId: $errorBody');
+            print(' فشل في حفظ بيانات الطالب $studentId: $errorBody');
           }
         } catch (e) {
           errorCount++;
-          print('❌ استثناء في حفظ بيانات الطالب $studentId: $e');
+          print(' استثناء في حفظ بيانات الطالب $studentId: $e');
         }
 
         // تأخير بسيط بين الطلبات لتجنب إرباك السيرفر
@@ -359,7 +358,7 @@ class _StudentPreparationPageState extends State<StudentPreparationPage> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('تم حفظ $successCount طالب ✅ | فشل $errorCount'),
+          content: Text('تم حفظ $successCount طالب  | فشل $errorCount'),
           backgroundColor: errorCount == 0 ? Colors.green : Colors.orange,
           duration: const Duration(seconds: 4),
         ),
@@ -525,12 +524,12 @@ class _StudentPreparationPageState extends State<StudentPreparationPage> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
-           Navigator.pushReplacement(
-  context,
-  MaterialPageRoute(
-    builder: (context) => MainScreen(role: widget.role), // <-- هنا
-  ),
-);
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => MainScreen(role: widget.role), // <-- هنا
+              ),
+            );
           },
         ),
         actions: [
@@ -583,8 +582,7 @@ class _StudentPreparationPageState extends State<StudentPreparationPage> {
                                             child: Text(c['class_name'] ??
                                                 c['grade_name'] ??
                                                 'الصف ${c['id']}'),
-                                          ))
-                                      ,
+                                          )),
                                 ],
                                 onChanged: (value) {
                                   setState(() {
@@ -623,8 +621,7 @@ class _StudentPreparationPageState extends State<StudentPreparationPage> {
                                                     s['id'].toString()),
                                             child: Text(s['section_name'] ??
                                                 'الشعبة ${s['id']}'),
-                                          ))
-                                      ,
+                                          )),
                                 ],
                                 onChanged: (value) {
                                   setState(() {

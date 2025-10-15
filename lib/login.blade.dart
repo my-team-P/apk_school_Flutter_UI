@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-
-// استبدل المسارات حسب مشروعك
 import 'package:admin/screens/main/main_screen.dart';
 import 'package:admin/ques_pass.blade.dart';
 import 'package:admin/RegisterPage.dart';
@@ -93,8 +91,27 @@ class _LoginPageState extends State<LoginPage_S> {
         final data = json.decode(response.body);
 
         final prefs = await SharedPreferences.getInstance();
+
+        // حفظ التوكن والدور
         await prefs.setString('access_token', data['access_token']);
         await prefs.setString('role', data['role']);
+
+        // حفظ بيانات المستخدم كاملة
+        if (data['user'] != null) {
+          final userData = data['user'];
+
+          // إذا كان الاسم null نعطي اسم افتراضي
+          if (userData['name'] == null) {
+            userData['name'] = 'غير معروف';
+          }
+
+          await prefs.setString('userData', json.encode(userData));
+
+          // حفظ الـ user_id لاستخدامه في فلترة الدرجات
+          if (userData['id'] != null) {
+            await prefs.setInt('user_id', userData['id']);
+          }
+        }
 
         Navigator.pushReplacement(
           context,

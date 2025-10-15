@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:admin/screens/main/main_screen.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // لحفظ الـ token والـ role
+import 'package:shared_preferences/shared_preferences.dart'; // لحفظ بيانات المستخدم محلياً
 
 class LoginApp extends StatelessWidget {
   const LoginApp({super.key});
@@ -73,13 +73,9 @@ class _LoginPageState extends State<LoginPage_T> {
 
     try {
       final response = await http.post(
-        Uri.parse(
-            'http://192.168.1.107:8000/api/login/teacher'), // رابط تسجيل الدخول للمعلم
+        Uri.parse('http://192.168.1.107:8000/api/login/teacher'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'email': email,
-          'password': password,
-        }),
+        body: jsonEncode({'email': email, 'password': password}),
       );
 
       setState(() {
@@ -89,16 +85,21 @@ class _LoginPageState extends State<LoginPage_T> {
       if (response.statusCode == 200) {
         final jsonResponse = json.decode(response.body);
 
-        // استخراج التوكن والدور مباشرة
+        // التوكن والـ user
         final token = jsonResponse['access_token'];
-        final role = jsonResponse['role'];
+        final user = jsonResponse['user'] ?? {};
+        final role = user['role'] ?? 'teacher';
 
-        // حفظ التوكن والدور
+        // حفظ كل بيانات المستخدم محلياً
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('access_token', token);
         await prefs.setString('role', role);
+        await prefs.setString('userData', json.encode(user));
 
-        // الانتقال للصفحة الرئيسية وتمرير الدور
+        print("token is: $token");
+        print("role is: $role");
+        print("userData: ${json.encode(user)}");
+
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -168,8 +169,6 @@ class _LoginPageState extends State<LoginPage_T> {
                     style: TextStyle(fontSize: 16, color: Colors.grey[700]),
                   ),
                   const SizedBox(height: 32),
-
-                  // البريد الإلكتروني
                   TextField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
@@ -185,8 +184,6 @@ class _LoginPageState extends State<LoginPage_T> {
                     ),
                   ),
                   const SizedBox(height: 20),
-
-                  // كلمة المرور
                   TextField(
                     controller: _passwordController,
                     obscureText: true,
@@ -202,8 +199,6 @@ class _LoginPageState extends State<LoginPage_T> {
                     ),
                   ),
                   const SizedBox(height: 12),
-
-                  // زر تسجيل الدخول أو مؤشر التحميل
                   _isLoading
                       ? const CircularProgressIndicator()
                       : ElevatedButton(
@@ -221,7 +216,6 @@ class _LoginPageState extends State<LoginPage_T> {
                           ),
                         ),
                   const SizedBox(height: 60),
-                  // زر تسجيل الدخول كمدير
                   TextButton(
                     onPressed: () {
                       showDialog(
@@ -306,10 +300,7 @@ class _AdminLoginDialogState extends State<AdminLoginDialog> {
       final response = await http.post(
         Uri.parse("http://192.168.1.107:8000/api/login/admin"),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'email': email,
-          'password': password,
-        }),
+        body: jsonEncode({'email': email, 'password': password}),
       );
 
       setState(() {
@@ -318,30 +309,26 @@ class _AdminLoginDialogState extends State<AdminLoginDialog> {
 
       if (response.statusCode == 200) {
         final jsonResponse = json.decode(response.body);
-
         final token = jsonResponse['access_token'];
-        final role = jsonResponse['role'] ?? jsonResponse['user']?['role'];
+        final user = jsonResponse['user'] ?? {};
+        final role = user['role'] ?? jsonResponse['role'] ?? 'admin';
 
-        if (token == null || role == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('خطأ في استجابة السيرفر')),
-          );
-          return;
-        }
-
+        // حفظ كل بيانات المستخدم محلياً
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('access_token', token);
         await prefs.setString('role', role);
+        await prefs.setString('userData', json.encode(user));
+
+        print("token: $token");
+        print("role: $role");
+        print("userData: ${json.encode(user)}");
 
         Navigator.pushAndRemoveUntil(
           context,
-          MaterialPageRoute(
-            builder: (context) => MainScreen(role: role),
-          ),
+          MaterialPageRoute(builder: (context) => MainScreen(role: role)),
           (route) => false,
         );
       } else {
-        print('Unexpected response: ${response.body}');
         final errorResponse = json.decode(response.body);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(errorResponse['message'] ?? "خطأ")),

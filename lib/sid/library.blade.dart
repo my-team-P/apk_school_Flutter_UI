@@ -4,12 +4,12 @@ import 'package:file_picker/file_picker.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:admin/screens/main/main_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SimpleLibraryPage extends StatefulWidget {
   final String role; // <-- أضف هذا
 
   const SimpleLibraryPage({super.key, required this.role});
-
 
   @override
   State<SimpleLibraryPage> createState() => _SimpleLibraryPageState();
@@ -145,7 +145,22 @@ class _SimpleLibraryPageState extends State<SimpleLibraryPage> {
     });
 
     try {
+      // جلب التوكن من SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('access_token');
+
+      if (token == null) {
+        _showMessage('لم يتم تسجيل الدخول بعد', Colors.red);
+        setState(() {
+          _isLoading = false;
+        });
+        return;
+      }
+
       var request = http.MultipartRequest('POST', Uri.parse(_baseUrl));
+
+      // إضافة Authorization header
+      request.headers['Authorization'] = 'Bearer $token';
 
       request.fields['book_title'] = _bookTitleController.text;
       request.fields['author'] = _authorController.text;
@@ -235,12 +250,13 @@ class _SimpleLibraryPageState extends State<SimpleLibraryPage> {
         leading: IconButton(
             icon: Icon(Icons.arrow_back, color: Colors.white),
             onPressed: () {
-             Navigator.pushReplacement(
-  context,
-  MaterialPageRoute(
-    builder: (context) => MainScreen(role: widget.role), // <-- هنا
-  ),
-);
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (context) =>
+                      MainScreen(role: widget.role), // <-- هنا
+                ),
+              );
             }),
       ),
       body: _isLoadingData
