@@ -75,6 +75,7 @@ class _SimpleLibraryPageState extends State<SimpleLibraryPage> {
       if (gradesResponse.statusCode == 200) {
         final data = json.decode(gradesResponse.body);
         print('Grades API data: $data'); // << Print added
+
         setState(() {
           _grades = data['classes'] ?? data['data'] ?? data ?? [];
         });
@@ -210,6 +211,9 @@ class _SimpleLibraryPageState extends State<SimpleLibraryPage> {
       _showMessage('خطأ في الاتصال: $e', Colors.red);
     }
   }
+
+
+
 
   void _clearForm() {
     _bookTitleController.clear();

@@ -141,8 +141,8 @@ class SideMenu extends StatelessWidget {
             if (isTeacher || isAdmin) ...[
               const Divider(color: Colors.white54),
               _sectionTitle("صفحات المعلم"),
-              _buildMenuTile(context, "الطلاب", Icons.people, Color(0xFF4facfe),
-                  () {
+              _buildMenuTile(
+                  context, "التحضير", Icons.people, Color(0xFF4facfe), () {
                 Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(

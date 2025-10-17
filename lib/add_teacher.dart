@@ -1,11 +1,11 @@
-import 'package:admin/screens/main/main_screen.dart';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
-import 'teacher_service.dart'; // تأكد من أن الملف في المسار الصحيح
+import 'package:admin/screens/main/main_screen.dart';
+import 'teacher_service.dart';
 
 class AddTeacherPage extends StatefulWidget {
-  final String role; // إضافة متغير role
+  final String role;
   const AddTeacherPage({super.key, required this.role});
 
   @override
@@ -17,7 +17,7 @@ class AddTeacherPageState extends State<AddTeacherPage> {
   late TeacherService _teacherService;
   late ImagePicker _picker;
 
-  // متغيرات الحالة
+  // ------------------- حالة الحقول -------------------
   File? _selectedImage;
   String _fullName = '';
   String _specialization = '';
@@ -29,7 +29,11 @@ class AddTeacherPageState extends State<AddTeacherPage> {
   String _qualification = '';
   bool _isActive = true;
 
-  // قوائم الاختيار
+  // ------------------- الصفوف -------------------
+  List<Map<String, dynamic>> _grades = [];
+  int? _selectedGradeId;
+
+  // ------------------- قوائم الاختيار -------------------
   final List<String> _specializations = [
     'الرياضيات',
     'العلوم',
@@ -55,6 +59,22 @@ class AddTeacherPageState extends State<AddTeacherPage> {
     super.initState();
     _teacherService = TeacherService();
     _picker = ImagePicker();
+    _fetchGrades();
+  }
+
+  // ------------------- جلب الصفوف -------------------
+  Future<void> _fetchGrades() async {
+    try {
+      var data = await _teacherService.getGrades();
+      setState(() {
+        _grades = (data as List)
+            .map<Map<String, dynamic>>(
+                (item) => Map<String, dynamic>.from(item))
+            .toList();
+      });
+    } catch (e) {
+      print('❌ خطأ في جلب الصفوف: $e');
+    }
   }
 
   @override
@@ -64,23 +84,21 @@ class AddTeacherPageState extends State<AddTeacherPage> {
       appBar: AppBar(
         title: Text(
           'إضافة معلم جديد',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
         backgroundColor: Colors.blue[700],
         elevation: 0,
         leading: IconButton(
-            icon: Icon(Icons.arrow_back, color: Colors.white),
-            onPressed: () {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => MainScreen(role: widget.role)),
-              );
-            }),
+          icon: Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => MainScreen(role: widget.role)),
+            );
+          },
+        ),
       ),
       body: SingleChildScrollView(
         padding: EdgeInsets.all(16),
@@ -95,6 +113,8 @@ class AddTeacherPageState extends State<AddTeacherPage> {
               _buildSpecializationField(),
               SizedBox(height: 16),
               _buildQualificationField(),
+              SizedBox(height: 16),
+              _buildGradeField(),
               SizedBox(height: 16),
               _buildEmailField(),
               SizedBox(height: 16),
@@ -116,8 +136,29 @@ class AddTeacherPageState extends State<AddTeacherPage> {
     );
   }
 
-  // بقيّة الدوال تبقى كما هي مع تعديل navigator لاستخدام widget.role
+  // ========================= Dropdown الصف =========================
+  Widget _buildGradeField() {
+    return DropdownButtonFormField<int>(
+      decoration: InputDecoration(
+        labelText: 'الصف الذي يدرّسه المعلم *',
+        prefixIcon: Icon(Icons.class_, color: Colors.blue[700]),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        filled: true,
+        fillColor: Colors.white,
+      ),
+      items: _grades.map((grade) {
+        return DropdownMenuItem<int>(
+          value: grade['id'],
+          child: Text(grade['grade_name']?.toString() ?? 'بدون اسم'),
+        );
+      }).toList(),
+      onChanged: (value) => setState(() => _selectedGradeId = value),
+      validator: (value) =>
+          value == null ? 'يرجى اختيار الصف الذي يدرّسه المعلم' : null,
+    );
+  }
 
+  // ========================= زر الحفظ =========================
   Widget _buildSubmitButton() {
     return SizedBox(
       width: double.infinity,
@@ -143,21 +184,24 @@ class AddTeacherPageState extends State<AddTeacherPage> {
 
       try {
         Map<String, dynamic> teacherData = {
-          'full_name': _fullName,
-          'specialization': _specialization,
-          'password': _password,
-          'phone': _phone.isEmpty ? null : _phone,
-          'email': _email,
-          'hire_date': _hireDate.isEmpty ? null : _hireDate,
-          'salary': _salary.isEmpty ? null : _salary,
-          'qualification': _qualification.isEmpty ? null : _qualification,
+          'full_name': _fullName.isNotEmpty ? _fullName : '',
+          'specialization': _specialization.isNotEmpty ? _specialization : '',
+          'password': _password.isNotEmpty ? _password : '',
+          'phone': _phone.isNotEmpty ? _phone : '',
+          'email': _email.isNotEmpty ? _email : '',
+          'hire_date': _hireDate.isNotEmpty ? _hireDate : '',
+          'salary': _salary.isNotEmpty ? _salary : '',
+          'qualification': _qualification.isNotEmpty ? _qualification : '',
           'is_active': _isActive ? 1 : 0,
+          'grade_id': _selectedGradeId ?? 0, // إذا لم يُختَر الصف
         };
 
-        bool success =
-            await _teacherService.addTeacher(teacherData, _selectedImage);
+        bool success = await _teacherService.addTeacher(
+          teacherData: teacherData,
+          image: _selectedImage,
+        );
 
-        Navigator.pop(context);
+        Navigator.pop(context); // إخفاء Loading Dialog
 
         success
             ? _showSuccessDialog()
@@ -169,6 +213,7 @@ class AddTeacherPageState extends State<AddTeacherPage> {
     }
   }
 
+  // ========================= Dialogs =========================
   void _showSuccessDialog() => showDialog(
         context: context,
         builder: (context) => AlertDialog(
@@ -215,35 +260,7 @@ class AddTeacherPageState extends State<AddTeacherPage> {
         ),
       );
 
-  // باقي الدوال مثل _pickImage, _selectDate تبقى كما هي
-
-  Widget _buildPasswordField() {
-    return TextFormField(
-      decoration: InputDecoration(
-        labelText: 'كلمة المرور *',
-        prefixIcon: Icon(Icons.lock, color: Colors.blue[700]),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.blue[700]!),
-        ),
-        filled: true,
-        fillColor: Colors.white,
-      ),
-      obscureText: true,
-      onSaved: (value) => _password = value ?? '',
-      validator: (value) {
-        if (value == null || value.isEmpty) {
-          return 'يرجى إدخال كلمة المرور';
-        }
-        if (value.length < 6) {
-          return 'كلمة المرور يجب أن تكون على الأقل 6 أحرف';
-        }
-        return null;
-      },
-    );
-  }
-
+  // ========================= باقي الحقول =========================
   Widget _buildTeacherPhoto() {
     return Column(
       children: [
@@ -349,12 +366,28 @@ class AddTeacherPageState extends State<AddTeacherPage> {
       keyboardType: TextInputType.emailAddress,
       onSaved: (value) => _email = value ?? '',
       validator: (value) {
-        if (value == null || value.isEmpty) {
+        if (value == null || value.isEmpty)
           return 'يرجى إدخال البريد الإلكتروني';
-        }
-        if (!value.contains('@')) {
-          return 'يرجى إدخال بريد إلكتروني صحيح';
-        }
+        if (!value.contains('@')) return 'يرجى إدخال بريد إلكتروني صحيح';
+        return null;
+      },
+    );
+  }
+
+  Widget _buildPasswordField() {
+    return TextFormField(
+      decoration: InputDecoration(
+        labelText: 'كلمة المرور *',
+        prefixIcon: Icon(Icons.lock, color: Colors.blue[700]),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        filled: true,
+        fillColor: Colors.white,
+      ),
+      obscureText: true,
+      onSaved: (value) => _password = value ?? '',
+      validator: (value) {
+        if (value == null || value.isEmpty) return 'يرجى إدخال كلمة المرور';
+        if (value.length < 6) return 'كلمة المرور يجب أن تكون على الأقل 6 أحرف';
         return null;
       },
     );

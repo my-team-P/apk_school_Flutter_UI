@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 class SettingsProvider extends ChangeNotifier {
   bool _darkMode = false;
-  String _language = "العربية";
+  String _language = "Arabic";
   String _fontSize = "متوسط";
 
   bool get darkMode => _darkMode;
@@ -26,11 +26,16 @@ class SettingsProvider extends ChangeNotifier {
 
   double get fontSizeValue {
     switch (_fontSize) {
-      case "صغير": return 12;
-      case "متوسط": return 14;
-      case "كبير": return 16;
-      case "كبير جداً": return 18;
-      default: return 14;
+      case "صغير":
+        return 12;
+      case "متوسط":
+        return 14;
+      case "كبير":
+        return 16;
+      case "كبير جداً":
+        return 18;
+      default:
+        return 14;
     }
   }
 }

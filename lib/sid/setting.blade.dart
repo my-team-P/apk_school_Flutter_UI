@@ -41,9 +41,6 @@ class _SettingsPageState extends State<SettingsPage> {
     final userEmail = userData?['email'] ?? "غير محدد";
     final userRole = userData?['role'] ?? widget.role;
     final userImage = userData?['profile_image'];
-    // final userClass = (userData != null && userData!['role'] == 'student')
-    //     ? userData!['grade_name'] ?? "غير محدد"
-    //     : null;
     final userClass = (userData != null && userData!['role'] == 'student')
         ? (userData!['grade_name']?.toString() ?? "غير محدد")
         : null;
@@ -213,7 +210,7 @@ class _SettingsPageState extends State<SettingsPage> {
             context,
             settings.language == "English" ? "Language" : "اللغة",
             Icons.language,
-            settings.language,
+            settings.language == "English" ? "English" : "العربية",
             _showLanguageDialog,
           ),
           _buildSettingOption(
@@ -288,6 +285,146 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget _buildStorageSection(BuildContext context) => Container();
   Widget _buildControlButtons(BuildContext context) => Container();
 
-  void _showLanguageDialog(BuildContext context) {}
-  void _showFontSizeDialog(BuildContext context) {}
+  // دالة لتغيير اللغة
+  void _showLanguageDialog(BuildContext context) {
+    final settings = Provider.of<SettingsProvider>(context, listen: false);
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(
+            settings.language == "English" ? "Select Language" : "اختر اللغة",
+            style: TextStyle(fontSize: settings.fontSizeValue),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.language, color: Color(0xFF667eea)),
+                title: Text(
+                  "English",
+                  style: TextStyle(fontSize: settings.fontSizeValue),
+                ),
+                trailing: settings.language == "English"
+                    ? const Icon(Icons.check, color: Color(0xFF667eea))
+                    : null,
+                onTap: () {
+                  settings.setLanguage("English");
+                  Navigator.of(context).pop();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.language, color: Color(0xFF667eea)),
+                title: Text(
+                  "العربية",
+                  style: TextStyle(fontSize: settings.fontSizeValue),
+                ),
+                trailing: settings.language == "Arabic"
+                    ? const Icon(Icons.check, color: Color(0xFF667eea))
+                    : null,
+                onTap: () {
+                  settings.setLanguage("Arabic");
+                  Navigator.of(context).pop();
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text(
+                settings.language == "English" ? "Cancel" : "إلغاء",
+                style: TextStyle(fontSize: settings.fontSizeValue),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // دالة لتغيير حجم الخط
+  void _showFontSizeDialog(BuildContext context) {
+    final settings = Provider.of<SettingsProvider>(context, listen: false);
+
+    // قائمة أحجام الخطوط المتاحة
+    final fontSizes = ["صغير", "متوسط", "كبير", "كبير جداً"];
+    final englishFontSizes = ["Small", "Medium", "Large", "Extra Large"];
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(
+            settings.language == "English" ? "Font Size" : "حجم الخط",
+            style: TextStyle(fontSize: settings.fontSizeValue),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                settings.language == "English"
+                    ? "Select font size"
+                    : "اختر حجم الخط",
+                style: TextStyle(fontSize: settings.fontSizeValue),
+              ),
+              const SizedBox(height: 20),
+              ...List.generate(fontSizes.length, (index) {
+                final fontSize = fontSizes[index];
+                final displayText = settings.language == "English"
+                    ? englishFontSizes[index]
+                    : fontSize;
+
+                return ListTile(
+                  title: Text(
+                    displayText,
+                    style: TextStyle(
+                      fontSize: _getFontSizeValue(fontSize),
+                    ),
+                  ),
+                  trailing: settings.fontSize == fontSize
+                      ? const Icon(Icons.check, color: Color(0xFF667eea))
+                      : null,
+                  onTap: () {
+                    settings.setFontSize(fontSize);
+                    Navigator.of(context).pop();
+                  },
+                );
+              }),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text(
+                settings.language == "English" ? "Cancel" : "إلغاء",
+                style: TextStyle(fontSize: settings.fontSizeValue),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // دالة مساعدة للحصول على قيمة حجم الخط
+  double _getFontSizeValue(String fontSize) {
+    switch (fontSize) {
+      case "صغير":
+        return 12;
+      case "متوسط":
+        return 14;
+      case "كبير":
+        return 16;
+      case "كبير جداً":
+        return 18;
+      default:
+        return 14;
+    }
+  }
 }
