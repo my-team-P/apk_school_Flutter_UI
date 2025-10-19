@@ -7,7 +7,7 @@ import 'package:admin/screens/main/main_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SimpleLibraryPage extends StatefulWidget {
-  final String role; // <-- أضف هذا
+  final String role; 
 
   const SimpleLibraryPage({super.key, required this.role});
 
@@ -56,7 +56,9 @@ class _SimpleLibraryPageState extends State<SimpleLibraryPage> {
 
   @override
   void initState() {
+    //اول دالة تنفذ
     super.initState();
+    //جلب الصفوف و المواد
     _loadGradesAndSubjects();
   }
 

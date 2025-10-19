@@ -144,7 +144,7 @@ class AddTeacherPageState extends State<AddTeacherPage> {
         prefixIcon: Icon(Icons.class_, color: Colors.blue[700]),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         filled: true,
-        fillColor: Colors.white,
+        fillColor: Colors.white,  
       ),
       items: _grades.map((grade) {
         return DropdownMenuItem<int>(
@@ -366,8 +366,9 @@ class AddTeacherPageState extends State<AddTeacherPage> {
       keyboardType: TextInputType.emailAddress,
       onSaved: (value) => _email = value ?? '',
       validator: (value) {
-        if (value == null || value.isEmpty)
+        if (value == null || value.isEmpty) {
           return 'يرجى إدخال البريد الإلكتروني';
+        }
         if (!value.contains('@')) return 'يرجى إدخال بريد إلكتروني صحيح';
         return null;
       },

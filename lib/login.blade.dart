@@ -88,35 +88,31 @@ class _LoginPageState extends State<LoginPage_S> {
       });
 
       if (response.statusCode == 200) {
+        //رد السيرفر كامل
         final data = json.decode(response.body);
+        final token = data['access_token'];
+        //بيانات المستخدم التي من السيرفر
+        final user = data['user'] ?? {};
+        final role = user['role'] ?? 'student'; // ثابت حسب نوع المستخدم
 
         final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('access_token', token);
+        await prefs.setString('role', role);
+        await prefs.setString('userData', json.encode(user));
 
-        // حفظ التوكن والدور
-        await prefs.setString('access_token', data['access_token']);
-        await prefs.setString('role', data['role']);
-
-        // حفظ بيانات المستخدم كاملة
-        if (data['user'] != null) {
-          final userData = data['user'];
-
-          // إذا كان الاسم null نعطي اسم افتراضي
-          if (userData['name'] == null) {
-            userData['name'] = 'غير معروف';
-          }
-
-          await prefs.setString('userData', json.encode(userData));
-
-          // حفظ الـ user_id لاستخدامه في فلترة الدرجات
-          if (userData['id'] != null) {
-            await prefs.setInt('user_id', userData['id']);
-          }
+        if (user['id'] != null) {
+          await prefs.setInt('user_id', user['id']);
         }
+
+        print(" تسجيل دخول ناجح");
+        print("token: $token");
+        print("role: $role");
+        print("userData: ${json.encode(user)}");
 
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => MainScreen(role: data['role']),
+            builder: (context) => MainScreen(role: role),
           ),
         );
       } else {
@@ -185,6 +181,7 @@ class _LoginPageState extends State<LoginPage_S> {
                   TextField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
+                    //تصميم حقل الادخال
                     decoration: InputDecoration(
                       prefixIcon: const Icon(Icons.email),
                       labelText: 'البريد الإلكتروني',
@@ -192,6 +189,7 @@ class _LoginPageState extends State<LoginPage_S> {
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
+                      //لون خلفية الحقل عند ادخال نص
                       filled: true,
                       fillColor: Colors.white,
                     ),
@@ -244,8 +242,9 @@ class _LoginPageState extends State<LoginPage_S> {
                   ),
                   const SizedBox(height: 20),
 
+                  //يقوم بالتحميل من السيرفر ويخفي زر تسجيل الدخول واذا تم التحميل يظهر زر تجسيل الدخول
                   _isLoading
-                      ? const CircularProgressIndicator()
+                      ? const CircularProgressIndicator() //يظهر دائرة التحميل
                       : ElevatedButton(
                           onPressed: _login,
                           style: ElevatedButton.styleFrom(

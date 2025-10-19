@@ -30,8 +30,11 @@ class UserTypeSelectionPage extends StatefulWidget {
 }
 
 class _UserTypeSelectionPageState extends State<UserTypeSelectionPage> {
+  //لقراءة/تعديل النص المدخل
   final TextEditingController _teacherPasswordController = TextEditingController();
+  //عرض/إخفاء حقل كلمة المرور
   bool _showPasswordField = false;
+  //عرض مؤشر تحميل بدل الزر
   bool _isLoading = false;
 
   static const Color topBackgroundColor = Color.fromARGB(255, 246, 230, 204);
@@ -49,6 +52,7 @@ class _UserTypeSelectionPageState extends State<UserTypeSelectionPage> {
     }
   }
 
+//يتحقق من كلمة المرور
   void _verifyTeacherPassword() {
     final enteredPassword = _teacherPasswordController.text.trim();
     
@@ -65,6 +69,7 @@ class _UserTypeSelectionPageState extends State<UserTypeSelectionPage> {
     }
   }
 
+//الانتقال الى صفحة الطالب
   void _navigateToStudentLogin() {
     setState(() {
       _isLoading = true;
@@ -81,7 +86,7 @@ class _UserTypeSelectionPageState extends State<UserTypeSelectionPage> {
       );
     });
   }
-
+//الانتقال الى صفحة الطالب
   void _navigateToTeacherLogin() {
     setState(() {
       _isLoading = true;
@@ -98,7 +103,7 @@ class _UserTypeSelectionPageState extends State<UserTypeSelectionPage> {
       );
     });
   }
-
+//خطا في كلمة المرور
   void _showErrorDialog(String message) {
     showDialog(
       context: context,
@@ -114,7 +119,7 @@ class _UserTypeSelectionPageState extends State<UserTypeSelectionPage> {
       ),
     );
   }
-
+//تنظيف حقل الادخال
   void _resetSelection() {
     setState(() {
       _showPasswordField = false;

@@ -25,6 +25,7 @@ class LibraryPageState extends State<LibraryPage> {
     fetchLibrary();
   }
 
+// جلب بيانات الكتب من السيرفر
   Future<void> fetchLibrary() async {
     final url = Uri.parse('http://192.168.1.107:8000/api/library');
     try {
@@ -46,6 +47,7 @@ class LibraryPageState extends State<LibraryPage> {
     }
   }
 
+//فتح ملف الكتاب
   Future<void> openFile(String filePath) async {
     String url = filePath.startsWith('http')
         ? filePath
@@ -58,6 +60,7 @@ class LibraryPageState extends State<LibraryPage> {
     }
   }
 
+//حذف كتاب معين من قاعدة البيانات
   Future<void> deleteBook(int id) async {
     final url = Uri.parse('http://192.168.1.107:8000/api/library/$id');
     try {
@@ -73,6 +76,7 @@ class LibraryPageState extends State<LibraryPage> {
     }
   }
 
+//عرض نافذة تعديل البيانات
   Future<void> editBook(Map book) async {
     final formKey = GlobalKey<FormState>();
     String bookTitle = book['book_title'] ?? '';
@@ -93,11 +97,15 @@ class LibraryPageState extends State<LibraryPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  //تُستخدم لإدخال نصوص داخل نموذج
                   TextFormField(
+                    //هي القيمة الافتراضية التي تظهر في الحقل
                     initialValue: bookTitle,
                     decoration:
+                        //تتحكم بشكل وتصميم الحقل
                         const InputDecoration(labelText: 'عنوان الكتاب'),
                     onChanged: (value) => bookTitle = value,
+                    //تُستخدم للتحقق من صحة النص المدخل.
                     validator: (value) =>
                         value!.isEmpty ? 'الرجاء إدخال عنوان الكتاب' : null,
                   ),
@@ -158,6 +166,7 @@ class LibraryPageState extends State<LibraryPage> {
     );
   }
 
+//تعديل بيانات الكتاب في السيرفر
   Future<void> updateBook(int id, Map<String, dynamic> data) async {
     final url = Uri.parse('http://192.168.1.107:8000/api/library/$id');
     try {
@@ -175,6 +184,7 @@ class LibraryPageState extends State<LibraryPage> {
     }
   }
 
+//يُرجع قائمة تحتوي على الكتب التي تطابق شروط البحث أو التصنيف.
   List get filteredBooks {
     List filtered = books;
     if (searchQuery.isNotEmpty) {
@@ -196,6 +206,7 @@ class LibraryPageState extends State<LibraryPage> {
     return filtered;
   }
 
+//ترجع قائمة بالفئات فقط على شكل نصوص.
   List<String> get categories {
     Set<String> categories = {};
     for (var book in books) {
@@ -204,6 +215,7 @@ class LibraryPageState extends State<LibraryPage> {
     return categories.toList()..sort();
   }
 
+//عرض رسالة نجاح للمستخدم في أسفل الشاشة عن نجاح العملية
   void _showSuccessSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -213,6 +225,7 @@ class LibraryPageState extends State<LibraryPage> {
     );
   }
 
+//تُظهر رسالة، لكنها لا تعيد نتيجة.
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -259,6 +272,7 @@ class LibraryPageState extends State<LibraryPage> {
     );
   }
 
+//يبني شريط البحث والفلاتر أعلى الصفحة.
   Widget _buildSearchFilterBar(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(12),
@@ -287,6 +301,7 @@ class LibraryPageState extends State<LibraryPage> {
     );
   }
 
+//يبني زر فئة (فلتر) واحد.
   Widget _buildFilterChip(String label, String? value) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -302,6 +317,7 @@ class LibraryPageState extends State<LibraryPage> {
     );
   }
 
+//يبني شريطًا صغيرًا أسفل البحث لعرض عدد الكتب.
   Widget _buildResultsInfo(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -324,6 +340,7 @@ class LibraryPageState extends State<LibraryPage> {
     );
   }
 
+//يُعرض عندما لا توجد كتب في النتائج.
   Widget _buildEmptyState(BuildContext context) {
     return Center(
       child: Column(
@@ -337,6 +354,7 @@ class LibraryPageState extends State<LibraryPage> {
     );
   }
 
+//يبني قائمة الكتب
   Widget _buildBooksList(BuildContext context) {
     return ListView.builder(
       padding: const EdgeInsets.all(8),
@@ -345,6 +363,7 @@ class LibraryPageState extends State<LibraryPage> {
     );
   }
 
+//يبني بطاقة كتاب واحدة.
   Widget _buildBookCard(Map book) {
     bool canEditOrDelete = widget.role == 'admin' || widget.role == 'teacher';
 
@@ -384,6 +403,7 @@ class LibraryPageState extends State<LibraryPage> {
     );
   }
 
+//يبني تفاصيل الكتاب أسفل العنوان
   Widget _buildBookInfo(Map book) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -397,6 +417,7 @@ class LibraryPageState extends State<LibraryPage> {
     );
   }
 
+//يبني صفًا أفقيًا صغيرًايحتوي المؤلف
   Widget _buildCompactInfoRow(String label, dynamic value) {
     return Row(
       children: [
