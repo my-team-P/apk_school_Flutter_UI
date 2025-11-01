@@ -2,7 +2,7 @@
 // import 'package:flutter/material.dart';
 // import 'package:provider/provider.dart';
 // import 'package:admin/first_screen.dart';
-
+// import'pachage:admin/Main_S.dart';
 // void main() {
 //   runApp(const MyApp());
 // }
@@ -22,11 +22,15 @@
 //         debugShowCheckedModeBanner: false,
 //         title: 'Flutter Admin Panel',
 //         theme: ThemeData(primarySwatch: Colors.indigo, fontFamily: 'Roboto'),
-//         home: const UserTypeSelectionApp(), // أول شاشة
+//         home: const HomePage(), // أول شاشة
 //       ),
 //     );
 //   }
 // }
+
+
+
+
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';

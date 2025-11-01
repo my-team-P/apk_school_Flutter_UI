@@ -38,7 +38,7 @@ class _SimpleLibraryPageState extends State<SimpleLibraryPage> {
   List<dynamic> _subjects = [];
 
   // رابط الـ API
-  final String _baseUrl = 'http://192.168.1.107:8000/api/library';
+  final String _baseUrl = 'http://192.168.1.101:8000/api/library';
 
   // التصنيفات الثابتة
   final List<String> _categories = [

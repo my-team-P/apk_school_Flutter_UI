@@ -33,9 +33,9 @@ class _StorePageState extends State<StorePage> {
   final List<String> _statuses = ["قادم", "منتهي", "ملغي"];
   final List<String> _importanceLevels = ["عالية", "متوسطة", "منخفضة"];
 
-  final String _apiUrl = 'http://192.168.1.107:8000/api/exams';
-  final String _subjectsUrl = 'http://192.168.1.107:8000/api/subjects';
-  final String _classesUrl = 'http://192.168.1.107:8000/api/classes';
+  final String _apiUrl = 'http://192.168.1.101:8000/api/exams';
+  final String _subjectsUrl = 'http://192.168.1.101:8000/api/subjects';
+  final String _classesUrl = 'http://192.168.1.101:8000/api/classes';
 
   @override
   void initState() {

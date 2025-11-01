@@ -22,7 +22,7 @@ class _ViewGradesPageState extends State<ViewGradesPage> {
   bool _isLoading = true;
   String? _errorMessage;
 
-  final String _baseUrl = 'http://192.168.1.107:8000/api';
+  final String _baseUrl = 'http://192.168.1.101:8000/api';
 
   @override
   void initState() {

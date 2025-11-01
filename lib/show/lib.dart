@@ -27,7 +27,7 @@ class LibraryPageState extends State<LibraryPage> {
 
 // جلب بيانات الكتب من السيرفر
   Future<void> fetchLibrary() async {
-    final url = Uri.parse('http://192.168.1.107:8000/api/library');
+    final url = Uri.parse('http://192.168.1.101:8000/api/library');
     try {
       final response = await http.get(url);
       if (response.statusCode == 200) {
@@ -51,7 +51,7 @@ class LibraryPageState extends State<LibraryPage> {
   Future<void> openFile(String filePath) async {
     String url = filePath.startsWith('http')
         ? filePath
-        : 'http://192.168.1.107:8000/storage/$filePath';
+        : 'http://192.168.1.101:8000/storage/$filePath';
     final uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -62,7 +62,7 @@ class LibraryPageState extends State<LibraryPage> {
 
 //حذف كتاب معين من قاعدة البيانات
   Future<void> deleteBook(int id) async {
-    final url = Uri.parse('http://192.168.1.107:8000/api/library/$id');
+    final url = Uri.parse('http://192.168.1.101:8000/api/library/$id');
     try {
       final response = await http.delete(url);
       if (response.statusCode == 200) {
@@ -168,7 +168,7 @@ class LibraryPageState extends State<LibraryPage> {
 
 //تعديل بيانات الكتاب في السيرفر
   Future<void> updateBook(int id, Map<String, dynamic> data) async {
-    final url = Uri.parse('http://192.168.1.107:8000/api/library/$id');
+    final url = Uri.parse('http://192.168.1.101:8000/api/library/$id');
     try {
       final response = await http.put(url,
           headers: {'Content-Type': 'application/json'},

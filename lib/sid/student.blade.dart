@@ -26,7 +26,7 @@ class _StudentPreparationPageState extends State<StudentPreparationPage> {
   bool _isSaving = false;
   String? _errorMessage;
 
-  final String _baseUrl = 'http://192.168.1.107:8000/api';
+  final String _baseUrl = 'http://192.168.1.101:8000/api';
   DateTime _selectedDate = DateTime.now();
 
   // تخزين بيانات الحضور والسلوك لكل طالب

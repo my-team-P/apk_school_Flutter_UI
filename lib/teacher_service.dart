@@ -155,7 +155,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class TeacherService {
-  static const String baseUrl = 'http://192.168.1.107:8000/api';
+  static const String baseUrl = 'http://192.168.1.101:8000/api';
 
   // ------------------ جلب الصفوف ------------------
   Future<List<Map<String, dynamic>>> getGrades() async {

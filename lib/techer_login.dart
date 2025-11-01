@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:admin/screens/main/main_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart'; // لحفظ بيانات المستخدم محلياً
-
+import 'package:admin/sid_2/S_or_T.dart';
 class LoginApp extends StatelessWidget {
   const LoginApp({super.key});
 
@@ -73,7 +73,7 @@ class _LoginPageState extends State<LoginPage_T> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://192.168.1.107:8000/api/login/teacher'),
+        Uri.parse('http://192.168.1.101:8000/api/login/teacher'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'email': email, 'password': password}),
       );
@@ -298,7 +298,7 @@ class _AdminLoginDialogState extends State<AdminLoginDialog> {
 
     try {
       final response = await http.post(
-        Uri.parse("http://192.168.1.107:8000/api/login/admin"),
+        Uri.parse("http://192.168.1.101:8000/api/login/admin"),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'email': email, 'password': password}),
       );
@@ -323,11 +323,20 @@ class _AdminLoginDialogState extends State<AdminLoginDialog> {
         print("role: $role");
         print("userData: ${json.encode(user)}");
 
-        Navigator.pushAndRemoveUntil(
+if(role=='teacher') {
+  Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (context) => MainScreen(role: role)),
           (route) => false,
         );
+} else {
+  Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => UserTypeSelectionAppAdmin()),
+          
+        );
+}
+        
       } else {
         final errorResponse = json.decode(response.body);
         ScaffoldMessenger.of(context).showSnackBar(

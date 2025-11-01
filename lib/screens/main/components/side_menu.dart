@@ -16,6 +16,10 @@ import 'package:admin/add_teacher.dart';
 import 'package:admin/show/show.dart';
 import 'package:admin/show/lib.dart';
 import 'package:admin/sid/exam.dart';
+import 'package:admin/sid/ParentComplaintPage.dart';
+import 'package:admin/sid/RequestPage.dart';
+import 'package:admin/sid/AssignmentsPreviewPage.dart';
+import 'package:admin/sid/Assignments_up.dart';
 
 class SideMenu extends StatelessWidget {
   final String role; // "admin", "teacher", "student"
@@ -57,31 +61,38 @@ class SideMenu extends StatelessWidget {
             // --- الصفحات العامة للجميع ---
             _buildMenuTile(
                 context, "الإعدادات", Icons.settings, Color(0xFFf6d365), () {
-              Navigator.pushReplacement(context,
+              Navigator.push(context,
                   MaterialPageRoute(builder: (_) => SettingsPage(role: role)));
             }),
             _buildMenuTile(
                 context, "الحصص", Icons.notifications, Color(0xFFfdcbf1), () {
-              Navigator.pushReplacement(
+              Navigator.push(
                   context,
                   MaterialPageRoute(
                       builder: (_) => NotificationPage(role: role)));
             }),
             _buildMenuTile(
+                context, "التكاليف", Icons.show_chart, Color(0xFF121111), () {
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => AssignmentsPreviewPage(role: role)));
+            }),
+            _buildMenuTile(
                 context, "الدردشة الذكية", Icons.chat, Color(0xFFa8edea), () {
-              Navigator.pushReplacement(context,
+              Navigator.push(context,
                   MaterialPageRoute(builder: (_) => ChatPage(role: role)));
             }),
             _buildMenuTile(
                 context, "الترجمة", Icons.translate, Color(0xFF43e97b), () {
-              Navigator.pushReplacement(
+              Navigator.push(
                   context,
                   MaterialPageRoute(
                       builder: (_) => TranslationPage(role: role)));
             }),
             _buildMenuTile(
                 context, "المكتبة", Icons.library_books, Color(0xFFfbc2eb), () {
-              Navigator.pushReplacement(
+              Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (_) => LibraryPage(
@@ -92,10 +103,18 @@ class SideMenu extends StatelessWidget {
             _buildMenuTile(
                 context, "معاينة الدرجات", Icons.show_chart, Color(0xFF121111),
                 () {
-              Navigator.pushReplacement(
+              Navigator.push(
                   context,
                   MaterialPageRoute(
                       builder: (_) => ViewGradesPage(role: role)));
+            }),
+
+            _buildMenuTile(context, "طلب عذر عدم الحضور", Icons.show_chart,
+                Color(0xFF121111), () {
+              Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => TeacherLeaveRequestPage(role: role)));
             }),
 
             // --- الصفحات الخاصة بالمدير ---
@@ -105,24 +124,33 @@ class SideMenu extends StatelessWidget {
 
               _buildMenuTile(context, " عرض المعلمين والطلاب", Icons.person,
                   Color(0xFF43e97b), () {
-                Navigator.pushReplacement(context,
+                Navigator.push(context,
                     MaterialPageRoute(builder: (_) => PeoplePage(role: role)));
               }),
               _buildMenuTile(
                   context, "إضافة معلم", Icons.person_add, Color(0xFFff9a9e),
                   () {
-                Navigator.pushReplacement(
+                Navigator.push(
                     context,
                     MaterialPageRoute(
                         builder: (_) => AddTeacherPage(role: role)));
               }),
               _buildMenuTile(context, "رفع الى المكتبة", Icons.library_books,
                   Color(0xFFfbc2eb), () {
-                Navigator.pushReplacement(
+                Navigator.push(
                     context,
                     MaterialPageRoute(
                         builder: (_) => SimpleLibraryPage(role: role)));
               }),
+
+              /// خاص بولي امر الطالب
+              // _buildMenuTile(
+              //     context, "رفع شكوى", Icons.show_chart, Color(0xFF121111), () {
+              //   Navigator.push(
+              //       context,
+              //       MaterialPageRoute(
+              //           builder: (_) => ParentComplaintPage(role: role)));
+              // }),
 
               // _buildMenuTile(
               //     context, "إدارة المواد", Icons.book, Color(0xFFa18cd1), () {
@@ -143,32 +171,48 @@ class SideMenu extends StatelessWidget {
               _sectionTitle("صفحات المعلم"),
               _buildMenuTile(
                   context, "التحضير", Icons.people, Color(0xFF4facfe), () {
-                Navigator.pushReplacement(
+                Navigator.push(
                     context,
                     MaterialPageRoute(
                         builder: (_) => StudentPreparationPage(role: role)));
               }),
               _buildMenuTile(
+                  context, "رفع تكليف", Icons.show_chart, Color(0xFF121111),
+                  () {
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => AssignmentUploadPage(role: role)));
+              }),
+              _buildMenuTile(
                   context, "إضافة درجات", Icons.add, Color(0xFFB0A7A7), () {
-                Navigator.pushReplacement(
+                Navigator.push(
                     context, MaterialPageRoute(builder: (_) => AddGradePage()));
               }),
               _buildMenuTile(context, "رفع الى المكتبة", Icons.library_books,
                   Color(0xFFfbc2eb), () {
-                Navigator.pushReplacement(
+                Navigator.push(
                     context,
                     MaterialPageRoute(
                         builder: (_) => SimpleLibraryPage(role: role)));
               }),
               _buildMenuTile(
+                  context, "رفع شكوى", Icons.library_books, Color(0xFFfbc2eb),
+                  () {
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => ParentComplaintPage(role: role)));
+              }),
+              _buildMenuTile(
                   context, "الاختبارات", Icons.store, Color(0xFFffd1ff), () {
-                Navigator.pushReplacement(context,
+                Navigator.push(context,
                     MaterialPageRoute(builder: (_) => StorePage(role: role)));
               }),
               _buildMenuTile(
                   context, "رفع امتحان", Icons.library_books, Color(0xFFfbc2eb),
                   () {
-                Navigator.pushReplacement(
+                Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (_) => SimpleExamsPage(
@@ -184,7 +228,7 @@ class SideMenu extends StatelessWidget {
               _sectionTitle("صفحات الطالب"),
               _buildMenuTile(
                   context, "الاختبارات", Icons.store, Color(0xFFffd1ff), () {
-                Navigator.pushReplacement(context,
+                Navigator.push(context,
                     MaterialPageRoute(builder: (_) => StorePage(role: role)));
               }),
             ],
@@ -199,7 +243,7 @@ class SideMenu extends StatelessWidget {
               await prefs.clear();
               Navigator.pushAndRemoveUntil(
                 context,
-                MaterialPageRoute(builder: (_) => UserTypeSelectionPage()),
+                MaterialPageRoute(builder: (_) => UserTypeSelectionApp()),
                 (route) => false,
               );
             }),

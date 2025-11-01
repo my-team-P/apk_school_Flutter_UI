@@ -28,9 +28,9 @@ class SimpleExamsPageState extends State<SimpleExamsPage> {
   List<dynamic> _grades = [];
   List<dynamic> _subjects = [];
 
-  final String _baseUrlExams = 'http://192.168.1.107:8000/api/exams';
-  final String _baseUrlClasses = 'http://192.168.1.107:8000/api/classes';
-  final String _baseUrlSubjects = 'http://192.168.1.107:8000/api/subjects';
+  final String _baseUrlExams = 'http://192.168.1.101:8000/api/exams';
+  final String _baseUrlClasses = 'http://192.168.1.101:8000/api/classes';
+  final String _baseUrlSubjects = 'http://192.168.1.101:8000/api/subjects';
 
   final List<String> _importanceLevels = ['عالية', 'متوسطة', 'منخفضة'];
   final List<String> _statusTypes = ['قادم', 'منتهي', 'ملغي'];

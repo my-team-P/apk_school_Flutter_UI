@@ -32,7 +32,7 @@ class _RegisterPageState extends State<RegisterPage> {
   Future<void> _fetchClasses() async {
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.1.107:8000/api/classes'),
+        Uri.parse('http://192.168.1.101:8000/api/classes'),
       );
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -68,7 +68,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
     try {
       final response = await http.post(
-        Uri.parse('http://192.168.1.107:8000/api/register'),
+        Uri.parse('http://192.168.1.101:8000/api/register'),
         body: {
           'name': _nameController.text,
           'email': _emailController.text,

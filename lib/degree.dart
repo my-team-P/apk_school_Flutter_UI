@@ -34,7 +34,7 @@ class _ExamGradePageState extends State<AddGradePage> {
   final List<String> examTypes = ["تجريبي", "شهري", "نهائي"];
   final gradesPercentages = List.generate(10, (i) => "${(i + 1) * 10}%");
   final evaluations = ["ضعيف", "مقبول", "جيد", "ممتاز"];
-  final String _baseUrl = 'http://192.168.1.107:8000/api';
+  final String _baseUrl = 'http://192.168.1.101:8000/api';
 
   @override
   void initState() {
